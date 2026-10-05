@@ -23,14 +23,16 @@ Use short and meaningful commit messages.
 
 Format:
 
-<type>: <short description>
+<type>(FAC-XX): <short description>
+
+The Jira key (FAC-XX) is mandatory: it links the commit to the Jira ticket.
 
 Examples:
 
-feat: add batch creation endpoint
-fix: validate batch expiry date
-docs: update README
-test: add reservation tests
+feat(FAC-41): add batch creation endpoint
+fix(FAC-41): validate batch expiry date
+docs(FAC-19): update README
+test(FAC-48): add reservation tests
 
 ## Pull requests
 
