@@ -18,7 +18,16 @@
         {% endfor %}
     {% endwith %}
 
-    {# Link to the registration page (route /register in app.py). #}
-    <a href="/register">Create an account</a>
+        {# The page changes depending on whether the user is logged in.
+       "session" is available in every template, like in app.py #}
+    {% if session.get("user_id") %}
+        {# Logged in: show who it is and a link to log out #}
+        <p>Logged in as {{ session["email"] }} ({{ session["role"] }})</p>
+        <a href="/logout">Log out</a>
+    {% else %}
+        {# Not logged in: show the links to log in or register #}
+        <a href="/login">Log in</a> |
+        <a href="/register">Create an account</a>
+    {% endif %}
 </body>
 </html>

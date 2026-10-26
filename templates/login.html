@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log in - Food-aid Connect</title>
+</head>
+<body>
+    <h1>Log in</h1>
+
+    {# Display the messages sent by flash() in app.py
+       (for example "Invalid email or password."). #}
+    {% with messages = get_flashed_messages() %}
+        {% for message in messages %}
+            <p>{{ message }}</p>
+        {% endfor %}
+    {% endwith %}
+
+    {# The form is sent with POST to /login,
+       handled by the login() function in app.py. #}
+    <form method="post">
+        <label>Email <input type="email" name="email" required></label><br>
+        <label>Password <input type="password" name="password" required></label><br>
+        <button type="submit">Log in</button>
+    </form>
+
+    {# Link for users who do not have an account yet. #}
+    <p>No account yet? <a href="/register">Create an account</a></p>
+</body>
+</html>
