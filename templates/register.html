@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Register - Food-aid Connect</title>
+</head>
+<body>
+  <h1>Create an account</h1>
+  {# Display the messages sent by flash() in app.py
+       (cf "This email is already registered.") #}
+  {% with messages = get_flashed_messages() %}
+    {% for message in messages %}
+      <p>{{ message }}</p>
+    {% endfor %}
+  {% endwith %}
+
+  {# method="post": the data is sent to the same address (/register)
+       with a POST request, handled in the register() function. #}
+  <form method="post">
+    {# Each name="..." must match request.form["..."] in app.py.
+           "required" stops the browser from sending an empty field. #}
+    <label>Email <input type="email" name="email" required></label><br>
+    <label>Password <input type="password" name="password" required></label><br>
+    
+    {# Drop-down list: the user chooses their role.
+           The "value" is what is saved in the database. #}
+    <label>I am a
+      <select name="role">
+        <option value="donor">Donor</option>
+        <option value="charity">Charity</option>
+      </select>
+    </label><br>
+    <button type="submit">Register</button>
+  </form>
+</body>
+</html>
