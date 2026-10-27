@@ -9,5 +9,16 @@
 <body>
     <h1>Food-aid Connect</h1>
     <p>Welcome to Food-aid Connect!</p>
+
+    {# Display the messages sent by flash() in app.py
+       (cf "Account created" after registration) #}
+    {% with messages = get_flashed_messages() %}
+        {% for message in messages %}
+            <p>{{ message }}</p>
+        {% endfor %}
+    {% endwith %}
+
+    {# Link to the registration page (route /register in app.py). #}
+    <a href="/register">Create an account</a>
 </body>
 </html>
