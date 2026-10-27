@@ -24,6 +24,14 @@
         {# Logged in: show who it is and a link to log out #}
         <p>Logged in as {{ session["email"] }} ({{ session["role"] }})</p>
         <a href="/logout">Log out</a>
+    
+        {# Only donors can see the "Post a batch" link #}
+    {% if session.get("role") == "donor" %}
+        <p>
+            <a href="{{ url_for('new_batch') }}">Post a batch</a>
+        </p>
+    {% endif %}
+    
     {% else %}
         {# Not logged in: show the links to log in or register #}
         <a href="/login">Log in</a> |
