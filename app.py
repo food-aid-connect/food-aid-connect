@@ -46,6 +46,32 @@ class User(db.Model):
     # The type of user: "donor" or "charity"
     role = db.Column(db.String(20), nullable=False)
 
+# A Batch represents surplus food posted by a donor
+class Batch(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Information entered by the donor
+    title = db.Column(db.String(120), nullable=False)
+    quantity = db.Column(db.String(100), nullable=False)
+    pickup_date = db.Column(db.String(20), nullable=False)
+
+    # A new batch is available by default
+    status = db.Column(db.String(20), nullable=False, default="available")
+
+    # The donor who posted the batch
+    donor_id = db.Column(
+        db.Integer,
+        db.ForeignKey("user.id"),
+        nullable=False
+    )
+
+    # No charity has reserved the batch yet
+    charity_id = db.Column(
+        db.Integer,
+        db.ForeignKey("user.id"),
+        nullable=True
+    )
+
 
 # Creates the tables in the database if they do not exist yet
 # app_context() is needed because the database is linked to the Flask app
@@ -137,6 +163,48 @@ def logout():
     session.clear()   # forget everything about the logged-in user
     flash("You are logged out.")
     return redirect(url_for("home"))
+
+# Post a new surplus food batch
+# GET: display the form
+# POST: validate the form and save the batch
+@app.route("/batches/new", methods=["GET", "POST"])
+def new_batch():
+
+    # Only logged-in users can post a batch
+    if "user_id" not in session:
+        flash("Please log in to post a batch.")
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        # Read and clean the form values
+        title = request.form.get("title", "").strip()
+        quantity = request.form.get("quantity", "").strip()
+        pickup_date = request.form.get("pickup_date", "").strip()
+
+        # All three fields are required
+        if not title or not quantity or not pickup_date:
+            flash("Please fill in all fields.")
+            return render_template("new_batch.html")
+
+        # Create a new batch linked to the logged-in user
+        batch = Batch(
+            title=title,
+            quantity=quantity,
+            pickup_date=pickup_date,
+            status="available",
+            donor_id=session["user_id"],
+            charity_id=None
+        )
+
+        # Save the batch to the database
+        db.session.add(batch)
+        db.session.commit()
+
+        flash("Batch posted.")
+        return redirect(url_for("home"))
+
+    # GET request: display the empty form
+    return render_template("new_batch.html")
 
 
 # STARTING THE APP
