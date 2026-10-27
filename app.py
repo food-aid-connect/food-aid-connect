@@ -175,6 +175,12 @@ def new_batch():
         flash("Please log in to post a batch.")
         return redirect(url_for("login"))
 
+    # Only donors can post a batch (FAC-34)
+    # session.get("role") returns None if the role is missing so this check never crashes
+    if session.get("role") != "donor":
+        flash("Only donors can post a batch.")
+        return redirect(url_for("home"))
+    
     if request.method == "POST":
         # Read and clean the form values
         title = request.form.get("title", "").strip()
