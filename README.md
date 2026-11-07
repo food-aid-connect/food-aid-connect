@@ -13,7 +13,7 @@ Web platform connecting food donors, charities and volunteers to redistribute su
 
 3. Install the dependencies:
    ```bash
-   python3 -m pip install -r requirements.txt
+   python3 -m pip install -r backend/requirements.txt
    ```
 
 4. Set the database connection URL (never commit your password).
@@ -29,9 +29,12 @@ Web platform connecting food donors, charities and volunteers to redistribute su
 
 5. Start the Flask application:
    ```bash
+   cd backend
    python3 app.py
    ```
 
 6. Open http://127.0.0.1:5000/ in your browser.
 
 The home page displays "Food-aid Connect". The tables are created automatically on first start.
+
+API documentation (Swagger): http://127.0.0.1:5000/docs
