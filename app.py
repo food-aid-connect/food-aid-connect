@@ -16,6 +16,7 @@ from flask_sqlalchemy import SQLAlchemy
 # check_password_hash: checks if a typed password matches a saved hash (login)
 from werkzeug.security import generate_password_hash, check_password_hash
 
+import os
 
 # APP CONFIGURATION
 
@@ -24,9 +25,12 @@ app = Flask(__name__)
 # Secret key used by Flask to sign data kept between pages
 app.config["SECRET_KEY"] = "dev-secret-key"
 
-# The database is SQLite: a single file called food.db
-# Flask creates it automatically in the "instance" folder
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///food.db"
+# The database URL is read from the DATABASE_URL environment variable
+# (PostgreSQL, no password stored in the code).
+# If the variable is not set, we fall back to a local SQLite file.
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
+    "DATABASE_URL", "sqlite:///food.db"
+)
 
 # "db" is the object we use for everything related to the database
 db = SQLAlchemy(app)
