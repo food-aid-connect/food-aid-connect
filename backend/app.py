@@ -6,7 +6,7 @@
 # redirect / url_for: send the user to another page
 # flash: stores a short message to display on the next page
 # session: remembers data about the user between pages (who is logged in)
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import render_template, request, redirect, url_for, flash, session
 
 # Flask-SQLAlchemy: an ORM (Object-Relational Mapper) 
 # It lets us use the database with Python classes and objects instead of writing SQL queries
@@ -18,9 +18,11 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 import os
 
+from apiflask import APIFlask
+
 # APP CONFIGURATION
 
-app = Flask(__name__)
+app = APIFlask(__name__, title="Food-aid Connect API", version="0.1")
 
 # Secret key used by Flask to sign data kept between pages
 app.config["SECRET_KEY"] = "dev-secret-key"
