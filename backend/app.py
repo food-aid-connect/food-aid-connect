@@ -18,7 +18,15 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 import os
 
-from apiflask import APIFlask
+from apiflask import APIFlask, Schema, abort
+from apiflask.fields import Integer, String
+
+
+class ReservationSchema(Schema):
+    message = String(required=True)
+    batch_id = Integer(required=True)
+    status = String(required=True)
+    charity_id = Integer(required=True)
 
 # APP CONFIGURATION
 
@@ -217,6 +225,46 @@ def new_batch():
 
     # GET request: display the empty form
     return render_template("new_batch.html")
+
+
+@app.get("/batches")
+def batches():
+    available_batches = Batch.query.filter_by(status="available").order_by(Batch.id).all()
+    user = db.session.get(User, session["user_id"]) if session.get("user_id") else None
+    return render_template("batches.html", batches=available_batches,
+                           can_reserve=user is not None and user.role == "charity")
+
+
+@app.post("/api/batches/<int:batch_id>/reserve")
+@app.output(ReservationSchema)
+@app.doc(summary="Reserve an available batch", tags=["Batches"], responses={
+    401: "Login required", 403: "Only charities can reserve batches",
+    404: "Batch not found", 409: "This batch is already reserved"
+})
+def reserve_batch(batch_id):
+    user = db.session.get(User, session["user_id"]) if session.get("user_id") else None
+    if user is None:
+        abort(401, message="Please log in to reserve a batch")
+    if user.role != "charity":
+        abort(403, message="Only charities can reserve batches")
+
+    # The condition is checked by the database as part of the update, so only
+    # one request can change an available batch to reserved.
+    updated = Batch.query.filter_by(id=batch_id, status="available").update(
+        {Batch.status: "reserved", Batch.charity_id: user.id},
+        synchronize_session=False
+    )
+    if not updated:
+        exists = db.session.get(Batch, batch_id) is not None
+        db.session.rollback()
+        if not exists:
+            abort(404, message="Batch not found")
+        abort(409, message="This batch is already reserved")
+
+    charity_id = user.id
+    db.session.commit()
+    return {"message": "Batch reserved successfully", "batch_id": batch_id,
+            "status": "reserved", "charity_id": charity_id}
 
 
 # STARTING THE APP
