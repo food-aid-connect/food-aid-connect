@@ -1,6 +1,5 @@
 # IMPORTS
 
-# Flask: the web framework
 # render_template: displays an HTML page from the "templates" folder
 # request: gives access to the data sent by a form
 # redirect / url_for: send the user to another page
@@ -16,10 +15,13 @@ from flask_sqlalchemy import SQLAlchemy
 # check_password_hash: checks if a typed password matches a saved hash (login)
 from werkzeug.security import generate_password_hash, check_password_hash
 
+# os: lets us read environment variables (here, DATABASE_URL)
 import os
 
+# APIFlask also builds the Swagger/OpenAPI documentation.
 from apiflask import APIFlask, Schema, abort
 from apiflask.fields import Integer, String
+from apiflask.validators import OneOf
 
 
 class ReservationSchema(Schema):
@@ -28,6 +30,8 @@ class ReservationSchema(Schema):
     status = String(required=True)
     charity_id = Integer(required=True)
 
+
+# ---------------------------------------------------------------------------------------------------
 # APP CONFIGURATION
 
 app = APIFlask(__name__, title="Food-aid Connect API", version="0.1")
@@ -45,7 +49,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
 # "db" is the object we use for everything related to the database
 db = SQLAlchemy(app)
 
-
+# ---------------------------------------------------------------------------------------------------
 # DATABASE TABLES
 
 # Each class is a table and each db.Column is a column of that table
@@ -92,6 +96,7 @@ class Batch(db.Model):
 with app.app_context():
     db.create_all()
 
+# ---------------------------------------------------------------------------------------------------
 # ROUTES (each page of the website)
 # Home page, at the address "/"
 @app.route("/")
@@ -226,6 +231,17 @@ def new_batch():
     # GET request: display the empty form
     return render_template("new_batch.html")
 
+# ---------------------------------------------------------------------------------------------------
+# API SCHEMAS
+# A schema describes the shape of the data sent by the API
+class BatchOutSchema(Schema):
+    id = Integer()
+    title = String()
+    quantity = String()
+    pickup_date = String()
+    status = String()
+    donor_id = Integer()
+    charity_id = Integer(allow_none = True)
 
 @app.get("/batches")
 def batches():
@@ -267,8 +283,25 @@ def reserve_batch(batch_id):
             "status": "reserved", "charity_id": charity_id}
 
 
-# STARTING THE APP
+class BatchQuerySchema(Schema):
+    status = String(load_default="available", validate=OneOf(["available", "reserved"]))
 
+# API ROUTES
+@app.get("/api/batches")
+@app.input(BatchQuerySchema, location="query")
+@app.output(BatchOutSchema(many=True))
+def list_batches(query_data):
+    # query_data["status"] is already validated by BatchQuerySchema
+    # Read the matching batches from the database (ORM, no SQL)
+    batches = db.session.execute(
+        db.select(Batch).filter_by(status = query_data['status'])
+    ).scalars().all()
+    return batches
+
+
+# ---------------------------------------------------------------------------------------------------
+
+# STARTING THE APP
 # Runs only when we start the file with "python app.py"
 # debug=True: shows detailed errors and restarts the server automatically
 # when the code changes (for development only)

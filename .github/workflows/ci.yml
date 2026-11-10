@@ -12,10 +12,10 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16
+        image: postgres:17
         env:
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: foodaid
+          POSTGRES_DB: foodaid_test
         ports:
           - 5432:5432
         options: >-
@@ -38,8 +38,13 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r backend/requirements.txt
 
-      - name: Run tests
+      - name: Run SQLite tests
+        working-directory: backend
+        run: python -m pytest -q
+
+      - name: Run PostgreSQL tests
         working-directory: backend
         env:
-          DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/foodaid
-        run: python -m pytest
+          DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/foodaid_test
+          FAC_TEST_POSTGRES_URL: postgresql+psycopg://postgres:postgres@localhost:5432/foodaid_test
+        run: python -m pytest -q
