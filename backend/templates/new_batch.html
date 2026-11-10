@@ -36,6 +36,31 @@
             <input type="date" id="pickup_date" name="pickup_date" required>
         </div>
 
+        <div>
+            <label for="category">Food category:</label>
+            <input type="text" id="category" name="category" maxlength="80" value="{{ request.form.get('category', '') }}">
+        </div>
+        <div>
+            <label for="quantity_kg">Quantity (kg):</label>
+            <input type="number" id="quantity_kg" name="quantity_kg" min="0.001" max="9999999.999" step="0.001" value="{{ request.form.get('quantity_kg', '') }}">
+        </div>
+        <div>
+            <label for="use_by_date">Use-by date:</label>
+            <input type="date" id="use_by_date" name="use_by_date" value="{{ request.form.get('use_by_date', '') }}">
+        </div>
+        <div>
+            <label for="pickup_address">Collection address:</label>
+            <input type="text" id="pickup_address" name="pickup_address" maxlength="255" value="{{ request.form.get('pickup_address', '') }}">
+        </div>
+        <div>
+            <label for="pickup_start">Pickup window start:</label>
+            <input type="time" id="pickup_start" name="pickup_start" value="{{ request.form.get('pickup_start', '') }}">
+        </div>
+        <div>
+            <label for="pickup_end">Pickup window end:</label>
+            <input type="time" id="pickup_end" name="pickup_end" value="{{ request.form.get('pickup_end', '') }}">
+        </div>
+
         <button type="submit">Post Batch</button>
     </form>
 
