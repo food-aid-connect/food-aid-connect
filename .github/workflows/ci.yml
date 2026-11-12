@@ -42,9 +42,15 @@ jobs:
         working-directory: backend
         run: python -m pytest -q
 
+      - name: Create disposable seed test database
+        env:
+          PGPASSWORD: postgres
+        run: createdb --host=localhost --username=postgres foodaid_seed_test
+
       - name: Run PostgreSQL tests
         working-directory: backend
         env:
           DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/foodaid_test
           FAC_TEST_POSTGRES_URL: postgresql+psycopg://postgres:postgres@localhost:5432/foodaid_test
+          FAC_SEED_TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/foodaid_seed_test
         run: python -m pytest -q
