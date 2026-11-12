@@ -6,11 +6,18 @@ import sys
 import pytest
 from werkzeug.security import check_password_hash
 
-from app import app, Batch, User
+from app import app, db, Batch, User
 from seed import DEMO_ACCOUNTS, DEMO_PASSWORD, main, populate_demo_data, validate_demo_database
 
 
 BACKEND = Path(__file__).resolve().parents[1]
+
+
+@pytest.fixture
+def database(isolated_database):
+    # Reuse main's isolation/cleanup and only supply the context seed tests need.
+    with app.app_context():
+        yield db
 
 
 def assert_demo_data(db):
@@ -103,9 +110,6 @@ def test_import_and_rejected_cli_do_not_load_app():
 
 
 def test_available_api_acceptance(database):
-    if not any(rule.rule == '/api/batches' and 'GET' in rule.methods
-               for rule in app.url_map.iter_rules()):
-        pytest.skip('FAC-46 acceptance blocked: PR #11 is not merged')
     populate_demo_data(database, User, Batch)
     response = app.test_client().get('/api/batches?status=available')
     assert response.status_code == 200
@@ -113,3 +117,13 @@ def test_available_api_acceptance(database):
     batches = payload if isinstance(payload, list) else payload['batches']
     assert len(batches) == 4
     assert all(batch['status'] == 'available' for batch in batches)
+
+
+def test_demo_charity_sees_four_batches(database):
+    populate_demo_data(database, User, Batch)
+    with app.test_client() as client:
+        client.post('/login', data={'email': 'charity.community@example.org', 'password': DEMO_PASSWORD})
+        response = client.get('/batches')
+        assert response.status_code == 200
+        assert response.get_data(as_text=True).count('<article>') == 4
+        assert response.get_data(as_text=True).count('>Reserve</button>') == 4

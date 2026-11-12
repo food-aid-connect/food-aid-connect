@@ -1,90 +1,154 @@
-# food-aid-connect
-Web platform connecting food donors, charities and volunteers to redistribute surplus food - Software Engineering project
+# Food Aid Connect
 
-## Run the Flask Application
+Web platform connecting food donors, charities, and volunteers to redistribute surplus food.
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/food-aid-connect/food-aid-connect.git
-   cd food-aid-connect
-   ```
+## Get the source
 
-2. Install PostgreSQL and create an empty database named `foodaid`.
+```bash
+git clone https://github.com/food-aid-connect/food-aid-connect.git
+cd food-aid-connect
+```
 
-3. Install the dependencies:
-   ```bash
-   python3 -m pip install -r backend/requirements.txt
-   ```
+Run the following commands from the repository root. Replace `YOUR_DB_USER`
+and `YOUR_URL_ENCODED_PASSWORD` with your PostgreSQL connection details.
+Never commit database credentials.
 
-4. Set the database connection URL (never commit your password).
-   - PowerShell:
-     ```powershell
-     $env:DATABASE_URL = "postgresql+psycopg://postgres:<password>@localhost:5432/foodaid"
-     ```
-   - macOS / Linux:
-     ```bash
-     export DATABASE_URL="postgresql+psycopg://postgres:<password>@localhost:5432/foodaid"
-     ```
-   If `DATABASE_URL` is not set, the app falls back to a local SQLite file.
+## macOS setup
 
-5. Start the Flask application:
-   ```bash
-   cd backend
-   python3 app.py
-   ```
+Install Python and PostgreSQL 17. With Homebrew, PostgreSQL can be installed
+and started with:
 
-6. Open http://127.0.0.1:5000/ in your browser.
+```bash
+brew install postgresql@17
+brew services start postgresql@17
+```
 
-The home page displays "Food-aid Connect". The tables are created automatically on first start.
+Ensure PostgreSQL's CLI tools are on your PATH, then create the application
+database if it does not already exist:
 
+```bash
+createdb --username=YOUR_DB_USER foodaid
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r backend/requirements.txt
+export DATABASE_URL='postgresql+psycopg://YOUR_DB_USER:YOUR_URL_ENCODED_PASSWORD@localhost:5432/foodaid'
+python backend/app.py
+```
+
+## Windows setup (PowerShell)
+
+Install Python and PostgreSQL 17 using their Windows installers. Start the
+PostgreSQL service through Windows Services. Ensure Python and PostgreSQL's
+CLI tools are on your PATH, then create the application database if it does
+not already exist:
+
+```powershell
+createdb --username=YOUR_DB_USER foodaid
+py -3 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r backend/requirements.txt
+$env:DATABASE_URL = 'postgresql+psycopg://YOUR_DB_USER:YOUR_URL_ENCODED_PASSWORD@localhost:5432/foodaid'
+python backend/app.py
+```
+
+## Application and API
+
+Open http://127.0.0.1:5000/ for the application.
 API documentation (Swagger): http://127.0.0.1:5000/docs
 
-## Demo seed data (FAC-56 / FAC-64)
+The application reads `DATABASE_URL` from the environment and creates missing
+tables on startup. If the variable is unset, it falls back to a local SQLite
+file. Browse available batches at `/batches`; logged-in charities can reserve
+them. `GET /api/batches` supports `status=available` (the default) and
+`status=reserved`. `POST /api/batches/<batch_id>/reserve` atomically reserves
+an available batch for one charity.
 
-**Warning: `--reset-demo` deletes all existing application tables and data in
-its target database**, then creates fresh tables and demo records. Use only a
-disposable local database. Never point this script at application or production
-data. It always refuses the existing `foodaid` database, even with the reset flag.
-Importing `seed` or running it without `--reset-demo` does not reset anything.
+## Tests
 
-Start PostgreSQL (on Apple Silicon with Homebrew) and create a separate database
-using your local PostgreSQL role:
+Use the activated virtual environment from either setup above.
 
-```bash
-/opt/homebrew/bin/brew services start postgresql@17
-/opt/homebrew/opt/postgresql@17/bin/createdb -h localhost -U <local-admin-role> \
-  --owner=<application-role> foodaid_demo
-```
+### SQLite
 
-If `foodaid_demo` already exists, keep it; do not recreate it. Its owner must
-have permission to create and drop its application tables. Install the backend
-dependencies into your virtual environment as described above. Configure
-`DATABASE_URL` in your shell or your Git-ignored `.env` using this format:
+Tests use a temporary SQLite database regardless of `DATABASE_URL` when
+`FAC_TEST_POSTGRES_URL` is unset.
 
-```text
-postgresql+psycopg://<application-role>:<URL-encoded-password>@localhost:5432/foodaid_demo
-```
-
-Keep credentials out of tracked files. If using the local `.env`, load it with
-`source .env` from the repository root, then select `foodaid_demo` explicitly.
-To reuse the credentials in an existing `DATABASE_URL` without printing them:
+macOS:
 
 ```bash
-export DATABASE_URL="$(.venv/bin/python -c 'import os; from sqlalchemy.engine import make_url; print(make_url(os.environ["DATABASE_URL"]).set(database="foodaid_demo").render_as_string(hide_password=False))')"
+unset FAC_TEST_POSTGRES_URL
+python -m pytest backend/tests -q
+```
+
+Windows PowerShell:
+
+```powershell
+Remove-Item Env:FAC_TEST_POSTGRES_URL -ErrorAction SilentlyContinue
+python -m pytest backend/tests -q
+```
+
+The PostgreSQL-only connection check is skipped in this mode.
+
+### PostgreSQL
+
+Create a separate test database if needed:
+
+```bash
+createdb --username=YOUR_DB_USER foodaid_test
+```
+
+macOS:
+
+```bash
+export FAC_TEST_POSTGRES_URL='postgresql+psycopg://YOUR_DB_USER:YOUR_URL_ENCODED_PASSWORD@localhost:5432/foodaid_test'
+python -m pytest backend/tests -q
+```
+
+Windows PowerShell:
+
+```powershell
+$env:FAC_TEST_POSTGRES_URL = 'postgresql+psycopg://YOUR_DB_USER:YOUR_URL_ENCODED_PASSWORD@localhost:5432/foodaid_test'
+python -m pytest backend/tests -q
+```
+
+The test database user needs permission to create schemas. Tests create
+randomly named `fac_test_...` schemas with fresh tables for every test,
+including concurrent reservation attempts. Application tables are not used
+or reset. Test schemas are retained rather than deleted.
+
+GitHub Actions runs both SQLite and PostgreSQL suites. Its PostgreSQL service
+and credentials are disposable and used only within the CI job.
+
+## Demo data (FAC-56 / FAC-64)
+
+**Use a separate, disposable `foodaid_demo` database.** `--reset-demo` deletes
+its existing application data and creates 2 donors, 2 charities, and 5 batches
+(4 available, 1 reserved). The script refuses `foodaid`, remote databases, and
+production settings, and never resets data on import or without the flag.
+
+With the virtual environment activated and PostgreSQL running, create
+`foodaid_demo` if it does not exist and select it explicitly:
+
+macOS:
+
+```bash
+createdb --username=YOUR_DB_USER foodaid_demo
+export DATABASE_URL='postgresql+psycopg://YOUR_DB_USER:YOUR_URL_ENCODED_PASSWORD@localhost:5432/foodaid_demo'
+cd backend && python seed.py --reset-demo
+python app.py
+```
+
+Windows PowerShell:
+
+```powershell
+createdb --username=YOUR_DB_USER foodaid_demo
+$env:DATABASE_URL = 'postgresql+psycopg://YOUR_DB_USER:YOUR_URL_ENCODED_PASSWORD@localhost:5432/foodaid_demo'
 cd backend
-../.venv/bin/python seed.py --reset-demo
+python seed.py --reset-demo
+python app.py
 ```
 
-The script requires an explicit `postgresql+psycopg` URL with a loopback host
-(`localhost`, `127.0.0.1`, or `::1`) and database name `foodaid_demo` or
-`foodaid_seed_test` (optionally suffixed with `_` and a 32-character hex UUID).
-URL query parameters are refused to prevent connection overrides. It also
-refuses `prod`/`production` in `APP_ENV`, `FLASK_ENV`, `ENVIRONMENT`, or `ENV`.
-No SQLite fallback is allowed for the seed command. No schema migration is
-performed: this is a destructive demo reset, not an upgrade tool.
-
-All four demo accounts use password **`demo123`**, stored as independently
-salted secure password hashes:
+Keep the same demo `DATABASE_URL` when starting the app. All demo accounts use
+password **`demo123`**, stored as securely salted hashes:
 
 | Email | Role |
 |---|---|
@@ -93,32 +157,11 @@ salted secure password hashes:
 | charity.community@example.org | charity |
 | charity.shelter@example.org | charity |
 
-The script creates five batches with pickup dates tomorrow: four available
-and one reserved by the community charity. To verify from `backend/`, using
-the same demo `DATABASE_URL`:
+Log in as either demo charity and open `/batches`: you should see **4 available
+batches**.
 
-```bash
-../.venv/bin/python -c 'from app import app, Batch; ctx = app.app_context(); ctx.push(); print("Available batches:", Batch.query.filter_by(status="available").count()); ctx.pop()'
-```
-
-Expected output: `Available batches: 4`. FAC-46's `GET /api/batches` endpoint
-is not yet on `main` (PR #11 is open). Its acceptance check is skipped until
-that endpoint is merged; it is not implemented by this seed change.
-
-### Seed tests
-
-From the repository root:
-
-```bash
-.venv/bin/python -m pytest -q
-```
-
-Default tests use an isolated temporary SQLite database, regardless of your
-application `DATABASE_URL`. For PostgreSQL integration, create another disposable
-database named `foodaid_seed_test`, owned by your test role. Set
-`FAC_SEED_TEST_DATABASE_URL` to its `postgresql+psycopg://` URL and run the same
-command. Integration tests **reset that database** with the seed command,
-validate counts, relationships, hashed passwords, login, repeated resets, and
-preservation without the reset flag. They never reset `foodaid`. PostgreSQL
-checks are explicitly skipped when this variable is absent; the available-batch
-API acceptance checks are skipped while FAC-46 is unavailable.
+Seed tests run with the suite above. To include destructive seed-CLI integration
+tests, configure `FAC_SEED_TEST_DATABASE_URL` for another disposable local
+database named `foodaid_seed_test` (not `foodaid_demo` or `foodaid_test`). CI
+creates this separate database and runs those checks alongside the PostgreSQL
+reservation tests.

@@ -77,16 +77,6 @@ with app.app_context():
 
 
 def test_postgresql_available_api(postgres_environment):
-    # Check availability before resetting anything. Do not implement FAC-46 here.
-    result = run_python(postgres_environment, '-c', '''
-from app import app
-import sys
-sys.exit(0 if any(rule.rule == "/api/batches" and "GET" in rule.methods
-                 for rule in app.url_map.iter_rules()) else 42)
-''')
-    if result.returncode == 42:
-        pytest.skip('FAC-46 acceptance blocked: PR #11 is not merged')
-    assert result.returncode == 0
     assert run_python(postgres_environment, 'seed.py', '--reset-demo').returncode == 0
     result = run_python(postgres_environment, '-c', '''
 from app import app
@@ -96,5 +86,10 @@ payload = response.get_json()
 batches = payload if isinstance(payload, list) else payload["batches"]
 assert len(batches) == 4
 assert all(batch["status"] == "available" for batch in batches)
+with app.test_client() as client:
+    client.post('/login', data={'email': 'charity.community@example.org', 'password': 'demo123'})
+    page = client.get('/batches')
+    assert page.status_code == 200
+    assert page.get_data(as_text=True).count('<article>') == 4
 ''')
     assert result.returncode == 0, 'Available-batch API acceptance failed'

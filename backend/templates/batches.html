@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Available batches - Food-aid Connect</title>
+</head>
+<body>
+    <h1>Available food batches</h1>
+    <p id="reservation-message" role="status" aria-live="polite"></p>
+    {% for batch in batches %}
+        <article>
+            <h2>{{ batch.title }}</h2>
+            <p>Quantity: {{ batch.quantity }}</p>
+            <p>Pickup date: {{ batch.pickup_date }}</p>
+            {% if can_reserve %}
+                <form class="reserve-form" action="{{ url_for('reserve_batch', batch_id=batch.id) }}" method="post">
+                    <button type="submit">Reserve</button>
+                </form>
+            {% endif %}
+        </article>
+    {% else %}
+        <p>No food batches are currently available.</p>
+    {% endfor %}
+    <p><a href="{{ url_for('home') }}">Back to Home</a></p>
+    <script>
+        document.querySelectorAll('.reserve-form').forEach(form => {
+            form.addEventListener('submit', async event => {
+                event.preventDefault();
+                const button = form.querySelector('button');
+                const message = document.getElementById('reservation-message');
+                button.disabled = true;
+                try {
+                    const response = await fetch(form.action, {method: 'POST', credentials: 'same-origin'});
+                    const result = await response.json();
+                    message.textContent = result.message || 'Unable to reserve this batch.';
+                    if (response.ok || response.status === 409) {
+                        form.closest('article').remove();
+                        if (!document.querySelector('article')) {
+                            const empty = document.createElement('p');
+                            empty.textContent = 'No food batches are currently available.';
+                            message.after(empty);
+                        }
+                    } else {
+                        button.disabled = false;
+                    }
+                } catch (error) {
+                    message.textContent = 'Unable to reserve this batch. Please try again.';
+                    button.disabled = false;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
