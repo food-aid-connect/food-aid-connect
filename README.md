@@ -117,3 +117,51 @@ or reset. Test schemas are retained rather than deleted.
 
 GitHub Actions runs both SQLite and PostgreSQL suites. Its PostgreSQL service
 and credentials are disposable and used only within the CI job.
+
+## Demo data (FAC-56 / FAC-64)
+
+**Use a separate, disposable `foodaid_demo` database.** `--reset-demo` deletes
+its existing application data and creates 2 donors, 2 charities, and 5 batches
+(4 available, 1 reserved). The script refuses `foodaid`, remote databases, and
+production settings, and never resets data on import or without the flag.
+
+With the virtual environment activated and PostgreSQL running, create
+`foodaid_demo` if it does not exist and select it explicitly:
+
+macOS:
+
+```bash
+createdb --username=YOUR_DB_USER foodaid_demo
+export DATABASE_URL='postgresql+psycopg://YOUR_DB_USER:YOUR_URL_ENCODED_PASSWORD@localhost:5432/foodaid_demo'
+cd backend && python seed.py --reset-demo
+python app.py
+```
+
+Windows PowerShell:
+
+```powershell
+createdb --username=YOUR_DB_USER foodaid_demo
+$env:DATABASE_URL = 'postgresql+psycopg://YOUR_DB_USER:YOUR_URL_ENCODED_PASSWORD@localhost:5432/foodaid_demo'
+cd backend
+python seed.py --reset-demo
+python app.py
+```
+
+Keep the same demo `DATABASE_URL` when starting the app. All demo accounts use
+password **`demo123`**, stored as securely salted hashes:
+
+| Email | Role |
+|---|---|
+| donor.bakery@example.org | donor |
+| donor.market@example.org | donor |
+| charity.community@example.org | charity |
+| charity.shelter@example.org | charity |
+
+Log in as either demo charity and open `/batches`: you should see **4 available
+batches**.
+
+Seed tests run with the suite above. To include destructive seed-CLI integration
+tests, configure `FAC_SEED_TEST_DATABASE_URL` for another disposable local
+database named `foodaid_seed_test` (not `foodaid_demo` or `foodaid_test`). CI
+creates this separate database and runs those checks alongside the PostgreSQL
+reservation tests.
