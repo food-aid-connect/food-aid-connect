@@ -1,7 +1,7 @@
-"""Default tests always use a disposable database, never application data."""
+"""Use a disposable database even when DATABASE_URL points at production."""
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
 from tempfile import TemporaryDirectory
 from uuid import uuid4
 
@@ -11,61 +11,52 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.schema import CreateSchema
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-_directory = TemporaryDirectory(prefix='fac67-tests-')
-_original_url = os.environ.get('DATABASE_URL')
-_postgres_url = os.environ.get('FAC67_TEST_DATABASE_URL')
-
-
-def new_postgres_engine():
-    url = make_url(_postgres_url)
-    if (url.drivername != 'postgresql+psycopg'
-            or not (url.database or '').startswith('foodaid_fac67_test_')
-            or url.host not in ('localhost', '127.0.0.1', '::1') or url.query):
-        raise ValueError('Use a local disposable foodaid_fac67_test_ database without query options')
-    engine = create_engine(url)
-    schema = 'fac67_' + uuid4().hex
-    with engine.begin() as connection:
-        connection.execute(CreateSchema(schema))
-    engine.dispose()
-    return create_engine(url.update_query_dict({'options': f'-csearch_path={schema}'}))
-
-
+_test_directory = TemporaryDirectory(prefix="fac-reservation-tests-")
+_original_url = os.environ.get("DATABASE_URL")
+_postgres_url = os.environ.get("FAC_TEST_POSTGRES_URL")
 if _postgres_url:
-    _initial_engine = new_postgres_engine()
-    os.environ['DATABASE_URL'] = _initial_engine.url.render_as_string(hide_password=False)
-    _initial_engine.dispose()
+    # Create a new schema before importing app: importing it calls create_all().
+    # Never run tests against application tables, even if the URL names foodaid.
+    _url = make_url(_postgres_url)
+    if _url.drivername != "postgresql+psycopg":
+        raise ValueError("FAC_TEST_POSTGRES_URL must use postgresql+psycopg")
+    _schema = f"fac_test_{uuid4().hex}"
+    _setup_engine = create_engine(_url)
+    with _setup_engine.begin() as connection:
+        connection.execute(CreateSchema(_schema))
+    _setup_engine.dispose()
+    _options = _url.query.get("options", "")
+    _url = _url.update_query_dict({"options": f"{_options} -csearch_path={_schema}".strip()})
+    os.environ["DATABASE_URL"] = _url.render_as_string(hide_password=False)
 else:
-    os.environ['DATABASE_URL'] = f'sqlite:///{_directory.name}/test.db'
-from app import app, db, User
+    os.environ["DATABASE_URL"] = f"sqlite:///{_test_directory.name}/test.db"
+from app import app, db, User, Batch
 
 if _original_url is None:
-    os.environ.pop('DATABASE_URL', None)
+    os.environ.pop("DATABASE_URL", None)
 else:
-    os.environ['DATABASE_URL'] = _original_url
+    os.environ["DATABASE_URL"] = _original_url
 
 
 @pytest.fixture(autouse=True)
-def database():
-    app.config['TESTING'] = True
+def isolated_database():
+    app.config["TESTING"] = True
     with app.app_context():
         if _postgres_url:
-            db.session.remove()
-            db.engines[None].dispose()
-            db.engines[None] = new_postgres_engine()
+            # Each test gets fresh tables, including concurrent requests using
+            # separate connections. Keep schemas afterwards; never delete data.
+            schema = f"fac_test_{uuid4().hex}"
+            with db.engine.begin() as connection:
+                connection.execute(CreateSchema(schema))
+            db.engine.update_execution_options(schema_translate_map={None: schema})
+        else:
+            db.drop_all()
         db.create_all()
-        yield db
+    yield
+    with app.app_context():
         db.session.remove()
         if not _postgres_url:
             db.drop_all()
-
-
-@pytest.fixture
-def legacy_postgres_engine():
-    if not _postgres_url:
-        pytest.skip('Set FAC67_TEST_DATABASE_URL for PostgreSQL migration verification')
-    engine = new_postgres_engine()
-    yield engine
-    engine.dispose()
 
 
 @pytest.fixture
@@ -74,11 +65,25 @@ def client():
 
 
 @pytest.fixture
-def donor(client, database):
-    user = User(email='donor@example.org', password_hash='unused', role='donor')
-    database.session.add(user)
-    database.session.commit()
-    with client.session_transaction() as session:
-        session['user_id'] = user.id
-        session['role'] = 'donor'
-    return user.id
+def records():
+    with app.app_context():
+        donor = User(email="donor@example.org", password_hash="unused", role="donor")
+        charity = User(email="charity@example.org", password_hash="unused", role="charity")
+        other = User(email="other@example.org", password_hash="unused", role="charity")
+        db.session.add_all([donor, charity, other])
+        db.session.flush()
+        batch = Batch(title="Fresh bread", quantity="10 loaves", pickup_date="2026-11-11",
+                      donor_id=donor.id)
+        db.session.add(batch)
+        db.session.commit()
+        return {"donor": donor.id, "charity": charity.id, "other": other.id, "batch": batch.id}
+
+
+@pytest.fixture
+def sign_in():
+    def login(client, user_id, role="charity"):
+        with client.session_transaction() as session:
+            session["user_id"] = user_id
+            session["role"] = role
+            session["email"] = "test@example.org"
+    return login

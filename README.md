@@ -1,115 +1,167 @@
-# food-aid-connect
-Web platform connecting food donors, charities and volunteers to redistribute surplus food - Software Engineering project
+# Food Aid Connect
 
-## Run the Flask Application
+Web platform connecting food donors, charities, and volunteers to redistribute surplus food.
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/food-aid-connect/food-aid-connect.git
-   cd food-aid-connect
-   ```
+## Get the source
 
-2. Install PostgreSQL and create an empty database named `foodaid`.
+```bash
+git clone https://github.com/food-aid-connect/food-aid-connect.git
+cd food-aid-connect
+```
 
-3. Install the dependencies:
-   ```bash
-   python3 -m pip install -r backend/requirements.txt
-   ```
+Run the following commands from the repository root. Replace `YOUR_DB_USER`
+and `YOUR_URL_ENCODED_PASSWORD` with your PostgreSQL connection details.
+Never commit database credentials.
 
-4. Set the database connection URL (never commit your password).
-   - PowerShell:
-     ```powershell
-     $env:DATABASE_URL = "postgresql+psycopg://postgres:<password>@localhost:5432/foodaid"
-     ```
-   - macOS / Linux:
-     ```bash
-     export DATABASE_URL="postgresql+psycopg://postgres:<password>@localhost:5432/foodaid"
-     ```
-   If `DATABASE_URL` is not set, the app falls back to a local SQLite file.
+## macOS setup
 
-5. Start the Flask application:
-   ```bash
-   cd backend
-   python3 app.py
-   ```
+Install Python and PostgreSQL 17. With Homebrew, PostgreSQL can be installed
+and started with:
 
-6. Open http://127.0.0.1:5000/ in your browser.
+```bash
+brew install postgresql@17
+brew services start postgresql@17
+```
 
-The home page displays "Food-aid Connect". The tables are created automatically on first start.
+Ensure PostgreSQL's CLI tools are on your PATH, then create the application
+database if it does not already exist:
 
+```bash
+createdb --username=YOUR_DB_USER foodaid
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r backend/requirements.txt
+export DATABASE_URL='postgresql+psycopg://YOUR_DB_USER:YOUR_URL_ENCODED_PASSWORD@localhost:5432/foodaid'
+python backend/app.py
+```
+
+## Windows setup (PowerShell)
+
+Install Python and PostgreSQL 17 using their Windows installers. Start the
+PostgreSQL service through Windows Services. Ensure Python and PostgreSQL's
+CLI tools are on your PATH, then create the application database if it does
+not already exist:
+
+```powershell
+createdb --username=YOUR_DB_USER foodaid
+py -3 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r backend/requirements.txt
+$env:DATABASE_URL = 'postgresql+psycopg://YOUR_DB_USER:YOUR_URL_ENCODED_PASSWORD@localhost:5432/foodaid'
+python backend/app.py
+```
+
+## Application and API
+
+Open http://127.0.0.1:5000/ for the application.
 API documentation (Swagger): http://127.0.0.1:5000/docs
 
-## Full batch descriptions (FAC-67)
+The application reads `DATABASE_URL` from the environment and creates missing
+tables on startup. If the variable is unset, it falls back to a local SQLite
+file. Browse available batches at `/batches`; logged-in charities can reserve
+them. `GET /api/batches` supports `status=available` (the default) and
+`status=reserved`. `POST /api/batches/<batch_id>/reserve` atomically reserves
+an available batch for one charity.
 
-Batches now support six additional optional fields. Keeping them nullable
-preserves legacy records, existing forms, and the pending FAC-56 seed script:
+## Tests
 
-| Field | PostgreSQL type | Meaning |
-|---|---|---|
-| `category` | `VARCHAR(80)` | Food category |
-| `quantity_kg` | `NUMERIC(10,3)` | Positive weight, up to 9999999.999 kg |
-| `use_by_date` | `DATE` | Use-by date, today or later when submitted |
-| `pickup_address` | `VARCHAR(255)` | Collection address |
-| `pickup_start` | `TIME WITHOUT TIME ZONE` | Local pickup start on `pickup_date` |
-| `pickup_end` | `TIME WITHOUT TIME ZONE` | Local pickup end on `pickup_date` |
+Use the activated virtual environment from either setup above.
 
-The existing `/batches/new` form accepts these fields. Invalid details,
-including a past use-by date, return HTTP 400 with an HTML error message.
-Today/future dates are accepted; dates use the application server's local
-calendar. If both pickup times are provided, the end must be after the start
-on the same day. The original title, quantity, and pickup date remain required;
-omitting the new fields remains supported.
+### SQLite
 
-`GET /api/batches` includes all six fields (null for older batches), with dates
-and times serialized as ISO strings and `quantity_kg` as a JSON number. Existing
-available/reserved filtering is unchanged. `/docs` documents both the form
-input and batch response. No new batch-creation API URL is introduced.
+Tests use a temporary SQLite database regardless of `DATABASE_URL` when
+`FAC_TEST_POSTGRES_URL` is unset.
 
-### Migrate an existing PostgreSQL database
-
-`db.create_all()` creates missing tables; **it does not add columns to existing
-tables**. Before running this version against an existing database:
+macOS:
 
 ```bash
-# From the repository root; .env must export the intended DATABASE_URL.
-.venv/bin/python -m pip install -r backend/requirements.txt
-source .env
-.venv/bin/python backend/migrate.py
-.venv/bin/python backend/app.py
+unset FAC_TEST_POSTGRES_URL
+python -m pytest backend/tests -q
 ```
 
-`DATABASE_URL` must explicitly use `postgresql+psycopg`; the migration refuses
-SQLite fallback and URL query overrides. Review the selected target before
-running. The command does not import the app or run `create_all()`.
+Windows PowerShell:
 
-There was no migration framework in this project. `backend/migrate.py` is a
-minimal additive migration runner using Alembic's SQLAlchemy operations. It
-inspects the existing `batch` table, adds only missing nullable columns in one
-PostgreSQL transaction, and leaves records, IDs, relationships, and existing
-columns unchanged. Re-running it is safe and reports no changes. Incompatible
-pre-existing detail columns cause it to stop for manual review rather than
-changing their types or deleting data. It never drops tables or databases.
-Run one migration process at a time. No destructive downgrade is provided.
+```powershell
+Remove-Item Env:FAC_TEST_POSTGRES_URL -ErrorAction SilentlyContinue
+python -m pytest backend/tests -q
+```
 
-For a fresh empty database, the app's existing initialization creates all model
-tables with the six fields; no separate migration is needed. Applying this
-migration to existing `foodaid` is an explicit deployment step, not something
-that runs on application import.
+The PostgreSQL-only connection check is skipped in this mode.
 
-### Tests
+### PostgreSQL
+
+Create a separate test database if needed:
 
 ```bash
-# Entire suite against isolated temporary SQLite; migration checks skip.
-.venv/bin/python -m pytest -q
+createdb --username=YOUR_DB_USER foodaid_test
 ```
 
-For the full suite on PostgreSQL, create a separate disposable local database
-named `foodaid_fac67_test_<unique-suffix>`, owned by your test role. Set
-`FAC67_TEST_DATABASE_URL` to its `postgresql+psycopg://` URL without query
-parameters, then run the same command. The role needs schema-creation
-permissions. Tests create fresh, uniquely named schemas for each test and
-retain them; application tables are never reset. PostgreSQL migration tests
-create legacy records in isolated schemas, run the migration repeatedly
-(including the real CLI), verify data preservation, and query migrated records
-through the API. Credentials belong in the shell or ignored `.env`, never in
-tracked files.
+macOS:
+
+```bash
+export FAC_TEST_POSTGRES_URL='postgresql+psycopg://YOUR_DB_USER:YOUR_URL_ENCODED_PASSWORD@localhost:5432/foodaid_test'
+python -m pytest backend/tests -q
+```
+
+Windows PowerShell:
+
+```powershell
+$env:FAC_TEST_POSTGRES_URL = 'postgresql+psycopg://YOUR_DB_USER:YOUR_URL_ENCODED_PASSWORD@localhost:5432/foodaid_test'
+python -m pytest backend/tests -q
+```
+
+The test database user needs permission to create schemas. Tests create
+randomly named `fac_test_...` schemas with fresh tables for every test,
+including concurrent reservation attempts. Application tables are not used
+or reset. Test schemas are retained rather than deleted.
+
+GitHub Actions runs both SQLite and PostgreSQL suites. Its PostgreSQL service
+and credentials are disposable and used only within the CI job.
+
+## Demo data (FAC-56 / FAC-64)
+
+**Use a separate, disposable `foodaid_demo` database.** `--reset-demo` deletes
+its existing application data and creates 2 donors, 2 charities, and 5 batches
+(4 available, 1 reserved). The script refuses `foodaid`, remote databases, and
+production settings, and never resets data on import or without the flag.
+
+With the virtual environment activated and PostgreSQL running, create
+`foodaid_demo` if it does not exist and select it explicitly:
+
+macOS:
+
+```bash
+createdb --username=YOUR_DB_USER foodaid_demo
+export DATABASE_URL='postgresql+psycopg://YOUR_DB_USER:YOUR_URL_ENCODED_PASSWORD@localhost:5432/foodaid_demo'
+cd backend && python seed.py --reset-demo
+python app.py
+```
+
+Windows PowerShell:
+
+```powershell
+createdb --username=YOUR_DB_USER foodaid_demo
+$env:DATABASE_URL = 'postgresql+psycopg://YOUR_DB_USER:YOUR_URL_ENCODED_PASSWORD@localhost:5432/foodaid_demo'
+cd backend
+python seed.py --reset-demo
+python app.py
+```
+
+Keep the same demo `DATABASE_URL` when starting the app. All demo accounts use
+password **`demo123`**, stored as securely salted hashes:
+
+| Email | Role |
+|---|---|
+| donor.bakery@example.org | donor |
+| donor.market@example.org | donor |
+| charity.community@example.org | charity |
+| charity.shelter@example.org | charity |
+
+Log in as either demo charity and open `/batches`: you should see **4 available
+batches**.
+
+Seed tests run with the suite above. To include destructive seed-CLI integration
+tests, configure `FAC_SEED_TEST_DATABASE_URL` for another disposable local
+database named `foodaid_seed_test` (not `foodaid_demo` or `foodaid_test`). CI
+creates this separate database and runs those checks alongside the PostgreSQL
+reservation tests.
