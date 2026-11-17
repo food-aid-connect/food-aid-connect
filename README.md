@@ -63,6 +63,22 @@ them. `GET /api/batches` supports `status=available` (the default) and
 `status=reserved`. `POST /api/batches/<batch_id>/reserve` atomically reserves
 an available batch for one charity.
 
+## Frontend Setup
+
+The frontend is built with Vue 3, TypeScript, Vite, and Vue Router.
+
+To install dependencies and start the frontend:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open http://localhost:5173/ in your browser.
+
+The Vite development server proxies `/api` requests to the Flask backend at `http://127.0.0.1:5000`. Make sure the Flask backend is running when accessing API endpoints.
+
 ## Tests
 
 Use the activated virtual environment from either setup above.
