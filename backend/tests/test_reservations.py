@@ -1,3 +1,4 @@
+from datetime import date
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 
@@ -131,7 +132,8 @@ def test_existing_account_and_batch_flow(client):
         donor_id = session['user_id']
         assert session['role'] == 'donor'
     response = client.post('/batches/new', data={
-        'title': 'Vegetables', 'quantity': '5 kg', 'pickup_date': '2026-11-11'
+        'title': 'Vegetables', 'quantity': '5 kg', 'pickup_date': date.today().isoformat(),
+        'quantity_kg': '5', 'use_by_date': date.today().isoformat()
     })
     assert response.status_code == 302
     with app.app_context():

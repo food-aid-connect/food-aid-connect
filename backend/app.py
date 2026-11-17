@@ -18,15 +18,13 @@ from werkzeug.security import generate_password_hash, check_password_hash
 # os: lets us read environment variables (here, DATABASE_URL)
 import os
 
-# APIFlask: a version of Flask that also builds the API documentation (Swagger)
-# Schema: describes the shape of the data going in and out of the API
-# Integer, String: the types of the fields in a schema
-# OneOf: a rule saying a value must be one of the listed choices
+# APIFlask also builds the Swagger/OpenAPI documentation.
 from apiflask import APIFlask, Schema, abort
 from apiflask.fields import Float, Integer, String
 from apiflask.validators import OneOf
 from marshmallow import ValidationError
-from batch_details import BatchCreateSchema, BatchDetailsSchema
+from batch_details import BatchCreateSchema, BatchDetailsSchema, CATEGORIES
+
 
 class ReservationSchema(Schema):
     message = String(required=True)
@@ -77,7 +75,7 @@ class Batch(db.Model):
     quantity = db.Column(db.String(100), nullable=False)
     pickup_date = db.Column(db.String(20), nullable=False)
 
-    # Optional details keep legacy batches and older creation clients compatible.
+    # Nullable details preserve legacy batches and demo seed records.
     category = db.Column(db.String(80), nullable=True)
     quantity_kg = db.Column(db.Numeric(10, 3), nullable=True)
     use_by_date = db.Column(db.Date, nullable=True)
@@ -198,23 +196,13 @@ def logout():
 # Post a new surplus food batch
 # GET: display the form
 # POST: validate the form and save the batch
-@app.get("/batches/new")
-def new_batch():
-    return _new_batch()
-
-
-@app.post("/batches/new")
+@app.route("/batches/new", methods=["GET", "POST"])
 @app.input(BatchCreateSchema, location="form", validation=False)
 @app.doc(responses={400: {
-    "description": "Invalid batch details, including a past use-by date",
+    "description": "Invalid or missing batch details",
     "content": {"text/html": {"schema": {"type": "string"}}}
 }})
-def create_batch(form_data):
-    return _new_batch()
-
-
-def _new_batch():
-
+def new_batch(form_data):
     # Only logged-in users can post a batch
     if "user_id" not in session:
         flash("Please log in to post a batch.")
@@ -227,36 +215,20 @@ def _new_batch():
         return redirect(url_for("home"))
     
     if request.method == "POST":
-        # Read and clean the form values
-        title = request.form.get("title", "").strip()
-        quantity = request.form.get("quantity", "").strip()
-        pickup_date = request.form.get("pickup_date", "").strip()
-
-        # All three fields are required
-        if not title or not quantity or not pickup_date:
-            flash("Please fill in all fields.")
-            return render_template("new_batch.html")
-
-        # Validate manually so form errors remain HTML and use HTTP 400.
+        # Validate once; keep form errors as HTML with HTTP 400.
+        schema = BatchCreateSchema()
         values = {key: value.strip() for key, value in request.form.items()
-                  if key in BatchCreateSchema().fields and value.strip()}
+                  if key in schema.fields and value.strip()}
         try:
-            details = BatchCreateSchema().load(values)
+            details = schema.load(values)
         except ValidationError as error:
             for field, messages in error.messages.items():
                 flash(f"{field}: {' '.join(messages)}")
-            return render_template("new_batch.html"), 400
+            return render_template("new_batch.html", categories=CATEGORIES), 400
 
-        # Create a new batch linked to the logged-in user
-        batch = Batch(
-            title=title,
-            quantity=quantity,
-            pickup_date=pickup_date,
-            status="available",
-            donor_id=session["user_id"],
-            charity_id=None,
-            **{key: details[key] for key in BatchDetailsSchema().fields}
-        )
+        # The existing column stores pickup dates as ISO strings.
+        details["pickup_date"] = details["pickup_date"].isoformat()
+        batch = Batch(donor_id=session["user_id"], **details)
 
         # Save the batch to the database
         db.session.add(batch)
@@ -266,7 +238,7 @@ def _new_batch():
         return redirect(url_for("home"))
 
     # GET request: display the empty form
-    return render_template("new_batch.html")
+    return render_template("new_batch.html", categories=CATEGORIES)
 
 # ---------------------------------------------------------------------------------------------------
 # API SCHEMAS
@@ -338,6 +310,7 @@ def list_batches(query_data):
 
 
 # ---------------------------------------------------------------------------------------------------
+
 # STARTING THE APP
 # Runs only when we start the file with "python app.py"
 # debug=True: shows detailed errors and restarts the server automatically

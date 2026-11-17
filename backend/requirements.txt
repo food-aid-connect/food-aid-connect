@@ -3,4 +3,3 @@ apiflask
 flask-sqlalchemy
 pytest
 psycopg[binary]
-alembic
