@@ -7,7 +7,7 @@
 # session: remembers data about the user between pages (who is logged in)
 from flask import render_template, request, redirect, url_for, flash, session
 
-# Flask-SQLAlchemy: an ORM (Object-Relational Mapper) 
+# Flask-SQLAlchemy: an ORM (Object-Relational Mapper)
 # It lets us use the database with Python classes and objects instead of writing SQL queries
 from flask_sqlalchemy import SQLAlchemy
 
@@ -20,17 +20,29 @@ import os
 
 # APIFlask also builds the Swagger/OpenAPI documentation.
 from apiflask import APIFlask, Schema, abort
-from apiflask.fields import Float, Integer, String
-from apiflask.validators import OneOf
+from apiflask.fields import Float, Integer, String, Email
+from apiflask.validators import Length, OneOf
 from marshmallow import ValidationError
 from batch_details import BatchCreateSchema, BatchDetailsSchema, CATEGORIES
 
-
+# ---------------------------------------------------------------------------------------------------
+# SCHEMAS
 class ReservationSchema(Schema):
     message = String(required=True)
     batch_id = Integer(required=True)
     status = String(required=True)
     charity_id = Integer(required=True)
+class UserRegisterSchema(Schema):
+    email = Email(required=True)
+    password = String(required=True, validate=Length(min=6))
+    role = String(required=True, validate=OneOf(["donor", "charity"]))
+class UserLoginSchema(Schema):
+    email = Email(required=True)
+    password = String(required=True)
+class UserOutSchema(Schema):
+    id = Integer(required=True)
+    email = Email(required=True)
+    role = String(required=True)
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -193,6 +205,25 @@ def logout():
     flash("You are logged out.")
     return redirect(url_for("home"))
 
+
+@app.post("/api/register")
+@app.input(UserRegisterSchema, location="json")
+@app.output(UserOutSchema, status_code=201)
+@app.doc(summary="Register a new account", tags=["Users"], responses={409: "This email is already registered"})
+def api_register(json_data):
+    email = json_data["email"]
+    if User.query.filter_by(email=email).first():
+        abort(409, message="This email is already registered")
+
+    # Create the User with the HASH of the password
+    user = User(email=email, password_hash=generate_password_hash(json_data["password"]), role=json_data["role"])
+
+    db.session.add(user)
+    db.session.commit()
+
+    return user
+
+
 # Post a new surplus food batch
 # GET: display the form
 # POST: validate the form and save the batch
@@ -213,7 +244,7 @@ def new_batch(form_data):
     if session.get("role") != "donor":
         flash("Only donors can post a batch.")
         return redirect(url_for("home"))
-    
+
     if request.method == "POST":
         # Validate once; keep form errors as HTML with HTTP 400.
         schema = BatchCreateSchema()
