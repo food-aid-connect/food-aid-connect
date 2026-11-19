@@ -317,6 +317,28 @@ def get_batch(batch_id):
         abort(404, message="Batch not found")
     return batch
 
+@app.post("/api/batches")
+@app.input(BatchCreateSchema, location="json")
+@app.output(BatchOutSchema, status_code=201)
+@app.doc(summary="Post one batch", tags=["Batches"], responses={401: "Login required", 403: "Only donors can post batches"})
+def create_batch(json_data):
+    # Find the logged-in user
+    user = db.session.get(User, session["user_id"]) if session.get("user_id") else None
+    if user is None:
+        abort(401, message="Please log in to post a batch")
+    if user.role != "donor":
+        abort(403, message="Only donors can post batches")
+    
+    # Convert pickup_date to a string
+    json_data["pickup_date"] = json_data["pickup_date"].isoformat()
+    # Create the Batch, add it, commit
+    batch = Batch(donor_id=user.id, **json_data)
+    db.session.add(batch)
+    db.session.commit()
+
+    # Return the batch
+    return batch
+
 # ---------------------------------------------------------------------------------------------------
 
 # STARTING THE APP
