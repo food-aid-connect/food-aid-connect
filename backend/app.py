@@ -308,6 +308,14 @@ def list_batches(query_data):
     ).scalars().all()
     return batches
 
+@app.get("/api/batches/<int:batch_id>")
+@app.output(BatchOutSchema)
+@app.doc(summary="Get one batch", tags=["Batches"], responses={404: "Batch not found"})
+def get_batch(batch_id):
+    batch = db.session.get(Batch, batch_id)
+    if batch is None:
+        abort(404, message="Batch not found")
+    return batch
 
 # ---------------------------------------------------------------------------------------------------
 
