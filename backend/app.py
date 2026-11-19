@@ -339,6 +339,30 @@ def create_batch(json_data):
     # Return the batch
     return batch
 
+@app.delete("/api/batches/<int:batch_id>")
+@app.output({}, status_code=204)
+@app.doc(summary="Delete a batch", tags=["Batches"], responses={401: "Login required", 403: "Only the donor who posted the batch can delete it", 404: "The batch must exist", 409: "The batch should be available, not reserved"})
+def delete_batch(batch_id):
+    
+    # Find the logged-in user
+    user = db.session.get(User, session["user_id"]) if session.get("user_id") else None
+    if user is None:
+        abort(401, message="Please log in to delete a batch")
+    
+    # Find the batch
+    batch = db.session.get(Batch, batch_id)
+    if batch is None:
+        abort(404, message="Batch not found")
+    if batch.donor_id != user.id:
+        abort(403, message="Only the donor who posted the batch can delete it")
+    if batch.status != "available":
+        abort(409, message="The batch must be available")
+    
+    db.session.delete(batch)
+    db.session.commit()
+    
+    return ""
+    
 # ---------------------------------------------------------------------------------------------------
 
 # STARTING THE APP
