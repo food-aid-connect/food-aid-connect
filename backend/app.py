@@ -20,8 +20,10 @@ import os
 
 # APIFlask also builds the Swagger/OpenAPI documentation.
 from apiflask import APIFlask, Schema, abort
-from apiflask.fields import Integer, String
+from apiflask.fields import Float, Integer, String
 from apiflask.validators import OneOf
+from marshmallow import ValidationError
+from batch_details import BatchCreateSchema, BatchDetailsSchema, CATEGORIES
 
 
 class ReservationSchema(Schema):
@@ -72,6 +74,14 @@ class Batch(db.Model):
     title = db.Column(db.String(120), nullable=False)
     quantity = db.Column(db.String(100), nullable=False)
     pickup_date = db.Column(db.String(20), nullable=False)
+
+    # Nullable details preserve legacy batches and demo seed records.
+    category = db.Column(db.String(80), nullable=True)
+    quantity_kg = db.Column(db.Numeric(10, 3), nullable=True)
+    use_by_date = db.Column(db.Date, nullable=True)
+    pickup_address = db.Column(db.String(255), nullable=True)
+    pickup_start = db.Column(db.Time, nullable=True)
+    pickup_end = db.Column(db.Time, nullable=True)
 
     # A new batch is available by default
     status = db.Column(db.String(20), nullable=False, default="available")
@@ -187,8 +197,12 @@ def logout():
 # GET: display the form
 # POST: validate the form and save the batch
 @app.route("/batches/new", methods=["GET", "POST"])
-def new_batch():
-
+@app.input(BatchCreateSchema, location="form", validation=False)
+@app.doc(responses={400: {
+    "description": "Invalid or missing batch details",
+    "content": {"text/html": {"schema": {"type": "string"}}}
+}})
+def new_batch(form_data):
     # Only logged-in users can post a batch
     if "user_id" not in session:
         flash("Please log in to post a batch.")
@@ -201,25 +215,20 @@ def new_batch():
         return redirect(url_for("home"))
     
     if request.method == "POST":
-        # Read and clean the form values
-        title = request.form.get("title", "").strip()
-        quantity = request.form.get("quantity", "").strip()
-        pickup_date = request.form.get("pickup_date", "").strip()
+        # Validate once; keep form errors as HTML with HTTP 400.
+        schema = BatchCreateSchema()
+        values = {key: value.strip() for key, value in request.form.items()
+                  if key in schema.fields and value.strip()}
+        try:
+            details = schema.load(values)
+        except ValidationError as error:
+            for field, messages in error.messages.items():
+                flash(f"{field}: {' '.join(messages)}")
+            return render_template("new_batch.html", categories=CATEGORIES), 400
 
-        # All three fields are required
-        if not title or not quantity or not pickup_date:
-            flash("Please fill in all fields.")
-            return render_template("new_batch.html")
-
-        # Create a new batch linked to the logged-in user
-        batch = Batch(
-            title=title,
-            quantity=quantity,
-            pickup_date=pickup_date,
-            status="available",
-            donor_id=session["user_id"],
-            charity_id=None
-        )
+        # The existing column stores pickup dates as ISO strings.
+        details["pickup_date"] = details["pickup_date"].isoformat()
+        batch = Batch(donor_id=session["user_id"], **details)
 
         # Save the batch to the database
         db.session.add(batch)
@@ -229,12 +238,13 @@ def new_batch():
         return redirect(url_for("home"))
 
     # GET request: display the empty form
-    return render_template("new_batch.html")
+    return render_template("new_batch.html", categories=CATEGORIES)
 
 # ---------------------------------------------------------------------------------------------------
 # API SCHEMAS
 # A schema describes the shape of the data sent by the API
-class BatchOutSchema(Schema):
+class BatchOutSchema(BatchDetailsSchema):
+    quantity_kg = Float(allow_none=True)
     id = Integer()
     title = String()
     quantity = String()

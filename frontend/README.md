@@ -25,6 +25,10 @@ See [Vite Configuration Reference](https://vite.dev/config/).
 
 ## Project Setup
 
+Install Node.js 22.22.2 or later in the 22.x series, 24.15.0 or later in the
+24.x series, or 26.0.0 or newer. The locked `npm-run-all2` dependency, which
+runs the frontend build, requires this range.
+
 ```sh
 npm install
 ```
