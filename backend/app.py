@@ -382,6 +382,36 @@ class BatchQuerySchema(Schema):
     status = String(load_default="available", validate=OneOf(["available", "reserved"]))
 
 # API ROUTES
+@app.get("/api/me/batches")
+@app.output(BatchOutSchema(many=True))
+@app.doc(summary="List my donated batches", tags=["Batches"], responses={
+    401: "Login required", 403: "Only donors can list their donated batches"
+})
+def list_my_batches():
+    user = db.session.get(User, session["user_id"]) if session.get("user_id") else None
+    if user is None:
+        abort(401, message="Please log in to see your batches")
+    if user.role != "donor":
+        abort(403, message="Only donors can list their donated batches")
+
+    return Batch.query.filter_by(donor_id=user.id).order_by(Batch.id).all()
+
+
+@app.get("/api/me/reservations")
+@app.output(BatchOutSchema(many=True))
+@app.doc(summary="List my reserved batches", tags=["Batches"], responses={
+    401: "Login required", 403: "Only charities can list their reservations"
+})
+def list_my_reservations():
+    user = db.session.get(User, session["user_id"]) if session.get("user_id") else None
+    if user is None:
+        abort(401, message="Please log in to see your reservations")
+    if user.role != "charity":
+        abort(403, message="Only charities can list their reservations")
+
+    return Batch.query.filter_by(charity_id=user.id, status="reserved").order_by(Batch.id).all()
+
+
 @app.get("/api/batches")
 @app.input(BatchQuerySchema, location="query")
 @app.output(BatchOutSchema(many=True))
