@@ -393,6 +393,93 @@ def list_batches(query_data):
     ).scalars().all()
     return batches
 
+@app.get("/api/batches/<int:batch_id>")
+@app.output(BatchOutSchema)
+@app.doc(summary="Get one batch", tags=["Batches"], responses={404: "Batch not found"})
+def get_batch(batch_id):
+    batch = db.session.get(Batch, batch_id)
+    if batch is None:
+        abort(404, message="Batch not found")
+    return batch
+
+@app.post("/api/batches")
+@app.input(BatchCreateSchema, location="json")
+@app.output(BatchOutSchema, status_code=201)
+@app.doc(summary="Post one batch", tags=["Batches"], responses={401: "Login required", 403: "Only donors can post batches"})
+def create_batch(json_data):
+    # Find the logged-in user
+    user = db.session.get(User, session["user_id"]) if session.get("user_id") else None
+    if user is None:
+        abort(401, message="Please log in to post a batch")
+    if user.role != "donor":
+        abort(403, message="Only donors can post batches")
+
+    # Convert pickup_date to a string
+    json_data["pickup_date"] = json_data["pickup_date"].isoformat()
+    # Create the Batch, add it, commit
+    batch = Batch(donor_id=user.id, **json_data)
+    db.session.add(batch)
+    db.session.commit()
+
+    # Return the batch
+    return batch
+
+@app.delete("/api/batches/<int:batch_id>")
+@app.output({}, status_code=204)
+@app.doc(summary="Delete a batch", tags=["Batches"], responses={401: "Login required", 403: "Only the donor who posted the batch can delete it", 404: "The batch must exist", 409: "The batch should be available, not reserved"})
+def delete_batch(batch_id):
+
+    # Find the logged-in user
+    user = db.session.get(User, session["user_id"]) if session.get("user_id") else None
+    if user is None:
+        abort(401, message="Please log in to delete a batch")
+
+    # Find the batch
+    # Lock the batch row until the end of the request, so a charity cannot
+    # reserve it between the status check and the delete
+    batch = db.session.get(Batch, batch_id, with_for_update=True)
+    if batch is None:
+        abort(404, message="Batch not found")
+    if batch.donor_id != user.id:
+        abort(403, message="Only the donor who posted the batch can delete it")
+    if batch.status != "available":
+        abort(409, message="The batch must be available")
+
+    db.session.delete(batch)
+    db.session.commit()
+
+    return ""
+
+@app.put("/api/batches/<int:batch_id>")
+@app.input(BatchCreateSchema, location="json")
+@app.output(BatchOutSchema, status_code=200)
+@app.doc(summary="Update a batch", tags=["Batches"], responses={401: "Login required", 403: "Only the donor who posted the batch can update it", 404: "The batch must exist", 409: "The batch should be available, not reserved"})
+def update_batch(batch_id, json_data):
+
+    # Find the logged-in user
+    user = db.session.get(User, session["user_id"]) if session.get("user_id") else None
+    if user is None:
+        abort(401, message="Please log in to update a batch")
+
+    # Find the batch
+    # Lock the batch row until the end of the request, so a charity cannot
+    # reserve it between the status check and the update
+    batch = db.session.get(Batch, batch_id, with_for_update=True)
+    if batch is None:
+        abort(404, message="Batch not found")
+    if batch.donor_id != user.id:
+        abort(403, message="Only the donor who posted the batch can update it")
+    if batch.status != "available":
+        abort(409, message="The batch must be available")
+
+    # Convert pickup_date to a string
+    json_data["pickup_date"] = json_data["pickup_date"].isoformat()
+
+    for key, value in json_data.items():
+        setattr(batch, key, value)
+    db.session.commit()
+
+    return batch
 
 # ---------------------------------------------------------------------------------------------------
 
