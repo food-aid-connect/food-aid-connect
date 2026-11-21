@@ -350,7 +350,9 @@ def delete_batch(batch_id):
         abort(401, message="Please log in to delete a batch")
 
     # Find the batch
-    batch = db.session.get(Batch, batch_id)
+    # Lock the batch row until the end of the request, so a charity cannot
+    # reserve it between the status check and the delete
+    batch = db.session.get(Batch, batch_id, with_for_update=True)
     if batch is None:
         abort(404, message="Batch not found")
     if batch.donor_id != user.id:
@@ -375,7 +377,9 @@ def update_batch(batch_id, json_data):
         abort(401, message="Please log in to update a batch")
 
     # Find the batch
-    batch = db.session.get(Batch, batch_id)
+    # Lock the batch row until the end of the request, so a charity cannot
+    # reserve it between the status check and the update
+    batch = db.session.get(Batch, batch_id, with_for_update=True)
     if batch is None:
         abort(404, message="Batch not found")
     if batch.donor_id != user.id:
@@ -391,6 +395,7 @@ def update_batch(batch_id, json_data):
     db.session.commit()
 
     return batch
+
 # ---------------------------------------------------------------------------------------------------
 
 # STARTING THE APP
