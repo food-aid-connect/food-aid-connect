@@ -84,6 +84,22 @@ the intended local database, then run from the repository root:
 
 A fresh empty database needs no reset: startup creates the tables automatically.
 
+## Frontend Setup
+
+The frontend is built with Vue 3, TypeScript, Vite, and Vue Router.
+
+To install dependencies and start the frontend:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open http://localhost:5173/ in your browser.
+
+The Vite development server proxies `/api` requests to the Flask backend at `http://127.0.0.1:5000`. Make sure the Flask backend is running when accessing API endpoints.
+
 ## Tests
 
 Use the activated virtual environment from either setup above.
