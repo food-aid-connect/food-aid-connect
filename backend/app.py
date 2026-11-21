@@ -25,6 +25,9 @@ from apiflask.validators import Length, OneOf
 from marshmallow import ValidationError
 from batch_details import BatchCreateSchema, BatchDetailsSchema, CATEGORIES
 
+# IntegrityError: raised by the database when a rule is broken (here, a duplicate email)
+from sqlalchemy.exc import IntegrityError
+
 # ---------------------------------------------------------------------------------------------------
 # SCHEMAS
 class ReservationSchema(Schema):
@@ -214,7 +217,7 @@ def logout():
 @app.output(UserOutSchema, status_code=201)
 @app.doc(summary="Register a new account", tags=["Users"], responses={409: "This email is already registered"})
 def api_register(json_data):
-    email = json_data["email"]
+    email = json_data["email"].strip()
     if User.query.filter_by(email=email).first():
         abort(409, message="This email is already registered")
 
@@ -222,7 +225,11 @@ def api_register(json_data):
     user = User(email=email, password_hash=generate_password_hash(json_data["password"]), role=json_data["role"])
 
     db.session.add(user)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        abort(409, message="This email is already registered")
 
     return user
 
