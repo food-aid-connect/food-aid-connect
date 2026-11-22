@@ -54,3 +54,61 @@ jobs:
           FAC_TEST_POSTGRES_URL: postgresql+psycopg://postgres:postgres@localhost:5432/foodaid_test
           FAC_SEED_TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/foodaid_seed_test
         run: python -m pytest -q
+
+  openapi-client:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install backend dependencies
+        run: python -m pip install -r backend/requirements.txt
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Regenerate and verify the OpenAPI client
+        shell: bash
+        run: |
+          flask_log="$RUNNER_TEMP/openapi-flask.log"
+          DATABASE_URL="sqlite:///$RUNNER_TEMP/openapi.db" \
+            python -m flask --app backend/app.py run --host 127.0.0.1 --port 5000 >"$flask_log" 2>&1 &
+          flask_pid=$!
+          trap 'kill "$flask_pid" 2>/dev/null || true; wait "$flask_pid" 2>/dev/null || true' EXIT
+
+          ready=false
+          for attempt in {1..30}; do
+            if ! kill -0 "$flask_pid" 2>/dev/null; then
+              break
+            fi
+            if curl --fail --silent --max-time 1 http://127.0.0.1:5000/openapi.json --output /dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [[ "$ready" != true ]]; then
+            echo "::error::Flask exited or /openapi.json did not become ready in time."
+            cat "$flask_log"
+            exit 1
+          fi
+
+          cd frontend
+          npm run generate:api
+          node scripts/check-api-generated.mjs
+
+      - name: Type-check and build frontend
+        working-directory: frontend
+        run: npm run build
