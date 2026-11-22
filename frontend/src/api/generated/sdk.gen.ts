@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { GetApiBatchesData, GetApiBatchesErrors, GetApiBatchesResponses, PostApiBatchesByBatchIdReserveData, PostApiBatchesByBatchIdReserveErrors, PostApiBatchesByBatchIdReserveResponses } from './types.gen';
+import type { DeleteApiBatchesByBatchIdData, DeleteApiBatchesByBatchIdErrors, DeleteApiBatchesByBatchIdResponses, GetApiBatchesByBatchIdData, GetApiBatchesByBatchIdErrors, GetApiBatchesByBatchIdResponses, GetApiBatchesData, GetApiBatchesErrors, GetApiBatchesResponses, GetApiMeBatchesData, GetApiMeBatchesErrors, GetApiMeBatchesResponses, GetApiMeData, GetApiMeErrors, GetApiMeReservationsData, GetApiMeReservationsErrors, GetApiMeReservationsResponses, GetApiMeResponses, PostApiBatchesByBatchIdReserveData, PostApiBatchesByBatchIdReserveErrors, PostApiBatchesByBatchIdReserveResponses, PostApiBatchesData, PostApiBatchesErrors, PostApiBatchesResponses, PostApiLoginData, PostApiLoginErrors, PostApiLoginResponses, PostApiLogoutData, PostApiLogoutResponses, PostApiRegisterData, PostApiRegisterErrors, PostApiRegisterResponses, PutApiBatchesByBatchIdData, PutApiBatchesByBatchIdErrors, PutApiBatchesByBatchIdResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -24,6 +24,84 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 export const getApiBatches = <ThrowOnError extends boolean = false>(options?: Options<GetApiBatchesData, ThrowOnError>): RequestResult<GetApiBatchesResponses, GetApiBatchesErrors, ThrowOnError> => (options?.client ?? client).get<GetApiBatchesResponses, GetApiBatchesErrors, ThrowOnError>({ url: '/api/batches', ...options });
 
 /**
+ * Post one batch
+ */
+export const postApiBatches = <ThrowOnError extends boolean = false>(options?: Options<PostApiBatchesData, ThrowOnError>): RequestResult<PostApiBatchesResponses, PostApiBatchesErrors, ThrowOnError> => (options?.client ?? client).post<PostApiBatchesResponses, PostApiBatchesErrors, ThrowOnError>({
+    url: '/api/batches',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
+    }
+});
+
+/**
+ * Delete a batch
+ */
+export const deleteApiBatchesByBatchId = <ThrowOnError extends boolean = false>(options: Options<DeleteApiBatchesByBatchIdData, ThrowOnError>): RequestResult<DeleteApiBatchesByBatchIdResponses, DeleteApiBatchesByBatchIdErrors, ThrowOnError> => (options.client ?? client).delete<DeleteApiBatchesByBatchIdResponses, DeleteApiBatchesByBatchIdErrors, ThrowOnError>({ url: '/api/batches/{batch_id}', ...options });
+
+/**
+ * Get one batch
+ */
+export const getApiBatchesByBatchId = <ThrowOnError extends boolean = false>(options: Options<GetApiBatchesByBatchIdData, ThrowOnError>): RequestResult<GetApiBatchesByBatchIdResponses, GetApiBatchesByBatchIdErrors, ThrowOnError> => (options.client ?? client).get<GetApiBatchesByBatchIdResponses, GetApiBatchesByBatchIdErrors, ThrowOnError>({ url: '/api/batches/{batch_id}', ...options });
+
+/**
+ * Update a batch
+ */
+export const putApiBatchesByBatchId = <ThrowOnError extends boolean = false>(options: Options<PutApiBatchesByBatchIdData, ThrowOnError>): RequestResult<PutApiBatchesByBatchIdResponses, PutApiBatchesByBatchIdErrors, ThrowOnError> => (options.client ?? client).put<PutApiBatchesByBatchIdResponses, PutApiBatchesByBatchIdErrors, ThrowOnError>({
+    url: '/api/batches/{batch_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
  * Reserve an available batch
  */
 export const postApiBatchesByBatchIdReserve = <ThrowOnError extends boolean = false>(options: Options<PostApiBatchesByBatchIdReserveData, ThrowOnError>): RequestResult<PostApiBatchesByBatchIdReserveResponses, PostApiBatchesByBatchIdReserveErrors, ThrowOnError> => (options.client ?? client).post<PostApiBatchesByBatchIdReserveResponses, PostApiBatchesByBatchIdReserveErrors, ThrowOnError>({ url: '/api/batches/{batch_id}/reserve', ...options });
+
+/**
+ * Log in
+ */
+export const postApiLogin = <ThrowOnError extends boolean = false>(options?: Options<PostApiLoginData, ThrowOnError>): RequestResult<PostApiLoginResponses, PostApiLoginErrors, ThrowOnError> => (options?.client ?? client).post<PostApiLoginResponses, PostApiLoginErrors, ThrowOnError>({
+    url: '/api/login',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
+    }
+});
+
+/**
+ * Empty the session
+ */
+export const postApiLogout = <ThrowOnError extends boolean = false>(options?: Options<PostApiLogoutData, ThrowOnError>): RequestResult<PostApiLogoutResponses, unknown, ThrowOnError> => (options?.client ?? client).post<PostApiLogoutResponses, unknown, ThrowOnError>({ url: '/api/logout', ...options });
+
+/**
+ * Find the logged-in user
+ */
+export const getApiMe = <ThrowOnError extends boolean = false>(options?: Options<GetApiMeData, ThrowOnError>): RequestResult<GetApiMeResponses, GetApiMeErrors, ThrowOnError> => (options?.client ?? client).get<GetApiMeResponses, GetApiMeErrors, ThrowOnError>({ url: '/api/me', ...options });
+
+/**
+ * List my donated batches
+ */
+export const getApiMeBatches = <ThrowOnError extends boolean = false>(options?: Options<GetApiMeBatchesData, ThrowOnError>): RequestResult<GetApiMeBatchesResponses, GetApiMeBatchesErrors, ThrowOnError> => (options?.client ?? client).get<GetApiMeBatchesResponses, GetApiMeBatchesErrors, ThrowOnError>({ url: '/api/me/batches', ...options });
+
+/**
+ * List my reserved batches
+ */
+export const getApiMeReservations = <ThrowOnError extends boolean = false>(options?: Options<GetApiMeReservationsData, ThrowOnError>): RequestResult<GetApiMeReservationsResponses, GetApiMeReservationsErrors, ThrowOnError> => (options?.client ?? client).get<GetApiMeReservationsResponses, GetApiMeReservationsErrors, ThrowOnError>({ url: '/api/me/reservations', ...options });
+
+/**
+ * Register a new account
+ */
+export const postApiRegister = <ThrowOnError extends boolean = false>(options?: Options<PostApiRegisterData, ThrowOnError>): RequestResult<PostApiRegisterResponses, PostApiRegisterErrors, ThrowOnError> => (options?.client ?? client).post<PostApiRegisterResponses, PostApiRegisterErrors, ThrowOnError>({
+    url: '/api/register',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
+    }
+});

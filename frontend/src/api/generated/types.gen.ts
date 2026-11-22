@@ -4,6 +4,18 @@ export type ClientOptions = {
     baseUrl: 'http://127.0.0.1:5000/' | (string & {});
 };
 
+export type BatchCreateSchema = {
+    category?: 'Bread and bakery' | 'Fruit and vegetables' | 'Canned and dry goods' | 'Dairy' | 'Prepared meals' | 'Other' | null;
+    pickup_address?: string | null;
+    pickup_date: string;
+    pickup_end?: string | null;
+    pickup_start?: string | null;
+    quantity: string;
+    quantity_kg: number;
+    title: string;
+    use_by_date: string;
+};
+
 export type BatchOutSchema = {
     category?: 'Bread and bakery' | 'Fruit and vegetables' | 'Canned and dry goods' | 'Dairy' | 'Prepared meals' | 'Other' | null;
     charity_id?: number | null;
@@ -32,6 +44,23 @@ export type ReservationSchema = {
     charity_id: number;
     message: string;
     status: string;
+};
+
+export type UserLoginSchema = {
+    email: string;
+    password: string;
+};
+
+export type UserOutSchema = {
+    email: string;
+    id: number;
+    role: string;
+};
+
+export type UserRegisterSchema = {
+    email: string;
+    password: string;
+    role: 'donor' | 'charity';
 };
 
 export type ValidationError = {
@@ -69,6 +98,148 @@ export type GetApiBatchesResponses = {
 };
 
 export type GetApiBatchesResponse = GetApiBatchesResponses[keyof GetApiBatchesResponses];
+
+export type PostApiBatchesData = {
+    body?: BatchCreateSchema;
+    path?: never;
+    query?: never;
+    url: '/api/batches';
+};
+
+export type PostApiBatchesErrors = {
+    /**
+     * Login required
+     */
+    401: HttpError;
+    /**
+     * Only donors can post batches
+     */
+    403: HttpError;
+    /**
+     * Validation error
+     */
+    422: ValidationError;
+};
+
+export type PostApiBatchesError = PostApiBatchesErrors[keyof PostApiBatchesErrors];
+
+export type PostApiBatchesResponses = {
+    /**
+     * Successful response
+     */
+    201: BatchOutSchema;
+};
+
+export type PostApiBatchesResponse = PostApiBatchesResponses[keyof PostApiBatchesResponses];
+
+export type DeleteApiBatchesByBatchIdData = {
+    body?: never;
+    path: {
+        batch_id: number;
+    };
+    query?: never;
+    url: '/api/batches/{batch_id}';
+};
+
+export type DeleteApiBatchesByBatchIdErrors = {
+    /**
+     * Login required
+     */
+    401: HttpError;
+    /**
+     * Only the donor who posted the batch can delete it
+     */
+    403: HttpError;
+    /**
+     * The batch must exist
+     */
+    404: HttpError;
+    /**
+     * The batch should be available, not reserved
+     */
+    409: HttpError;
+};
+
+export type DeleteApiBatchesByBatchIdError = DeleteApiBatchesByBatchIdErrors[keyof DeleteApiBatchesByBatchIdErrors];
+
+export type DeleteApiBatchesByBatchIdResponses = {
+    /**
+     * Successful response
+     */
+    204: void;
+};
+
+export type DeleteApiBatchesByBatchIdResponse = DeleteApiBatchesByBatchIdResponses[keyof DeleteApiBatchesByBatchIdResponses];
+
+export type GetApiBatchesByBatchIdData = {
+    body?: never;
+    path: {
+        batch_id: number;
+    };
+    query?: never;
+    url: '/api/batches/{batch_id}';
+};
+
+export type GetApiBatchesByBatchIdErrors = {
+    /**
+     * Batch not found
+     */
+    404: HttpError;
+};
+
+export type GetApiBatchesByBatchIdError = GetApiBatchesByBatchIdErrors[keyof GetApiBatchesByBatchIdErrors];
+
+export type GetApiBatchesByBatchIdResponses = {
+    /**
+     * Successful response
+     */
+    200: BatchOutSchema;
+};
+
+export type GetApiBatchesByBatchIdResponse = GetApiBatchesByBatchIdResponses[keyof GetApiBatchesByBatchIdResponses];
+
+export type PutApiBatchesByBatchIdData = {
+    body?: BatchCreateSchema;
+    path: {
+        batch_id: number;
+    };
+    query?: never;
+    url: '/api/batches/{batch_id}';
+};
+
+export type PutApiBatchesByBatchIdErrors = {
+    /**
+     * Login required
+     */
+    401: HttpError;
+    /**
+     * Only the donor who posted the batch can update it
+     */
+    403: HttpError;
+    /**
+     * The batch must exist
+     */
+    404: HttpError;
+    /**
+     * The batch should be available, not reserved
+     */
+    409: HttpError;
+    /**
+     * Validation error
+     */
+    422: ValidationError;
+};
+
+export type PutApiBatchesByBatchIdError = PutApiBatchesByBatchIdErrors[keyof PutApiBatchesByBatchIdErrors];
+
+export type PutApiBatchesByBatchIdResponses = {
+    /**
+     * Successful response
+     */
+    200: BatchOutSchema;
+};
+
+export type PutApiBatchesByBatchIdResponse = PutApiBatchesByBatchIdResponses[keyof PutApiBatchesByBatchIdResponses];
 
 export type PostApiBatchesByBatchIdReserveData = {
     body?: never;
@@ -108,3 +279,160 @@ export type PostApiBatchesByBatchIdReserveResponses = {
 };
 
 export type PostApiBatchesByBatchIdReserveResponse = PostApiBatchesByBatchIdReserveResponses[keyof PostApiBatchesByBatchIdReserveResponses];
+
+export type PostApiLoginData = {
+    body?: UserLoginSchema;
+    path?: never;
+    query?: never;
+    url: '/api/login';
+};
+
+export type PostApiLoginErrors = {
+    /**
+     * Invalid email or password.
+     */
+    401: HttpError;
+    /**
+     * Validation error
+     */
+    422: ValidationError;
+};
+
+export type PostApiLoginError = PostApiLoginErrors[keyof PostApiLoginErrors];
+
+export type PostApiLoginResponses = {
+    /**
+     * Successful response
+     */
+    200: UserOutSchema;
+};
+
+export type PostApiLoginResponse = PostApiLoginResponses[keyof PostApiLoginResponses];
+
+export type PostApiLogoutData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/logout';
+};
+
+export type PostApiLogoutResponses = {
+    /**
+     * Successful response
+     */
+    204: void;
+};
+
+export type PostApiLogoutResponse = PostApiLogoutResponses[keyof PostApiLogoutResponses];
+
+export type GetApiMeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/me';
+};
+
+export type GetApiMeErrors = {
+    /**
+     * Login required
+     */
+    401: HttpError;
+};
+
+export type GetApiMeError = GetApiMeErrors[keyof GetApiMeErrors];
+
+export type GetApiMeResponses = {
+    /**
+     * Successful response
+     */
+    200: UserOutSchema;
+};
+
+export type GetApiMeResponse = GetApiMeResponses[keyof GetApiMeResponses];
+
+export type GetApiMeBatchesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/me/batches';
+};
+
+export type GetApiMeBatchesErrors = {
+    /**
+     * Login required
+     */
+    401: HttpError;
+    /**
+     * Only donors can list their donated batches
+     */
+    403: HttpError;
+};
+
+export type GetApiMeBatchesError = GetApiMeBatchesErrors[keyof GetApiMeBatchesErrors];
+
+export type GetApiMeBatchesResponses = {
+    /**
+     * Successful response
+     */
+    200: Array<BatchOutSchema>;
+};
+
+export type GetApiMeBatchesResponse = GetApiMeBatchesResponses[keyof GetApiMeBatchesResponses];
+
+export type GetApiMeReservationsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/me/reservations';
+};
+
+export type GetApiMeReservationsErrors = {
+    /**
+     * Login required
+     */
+    401: HttpError;
+    /**
+     * Only charities can list their reservations
+     */
+    403: HttpError;
+};
+
+export type GetApiMeReservationsError = GetApiMeReservationsErrors[keyof GetApiMeReservationsErrors];
+
+export type GetApiMeReservationsResponses = {
+    /**
+     * Successful response
+     */
+    200: Array<BatchOutSchema>;
+};
+
+export type GetApiMeReservationsResponse = GetApiMeReservationsResponses[keyof GetApiMeReservationsResponses];
+
+export type PostApiRegisterData = {
+    body?: UserRegisterSchema;
+    path?: never;
+    query?: never;
+    url: '/api/register';
+};
+
+export type PostApiRegisterErrors = {
+    /**
+     * This email is already registered
+     */
+    409: HttpError;
+    /**
+     * Validation error
+     */
+    422: ValidationError;
+};
+
+export type PostApiRegisterError = PostApiRegisterErrors[keyof PostApiRegisterErrors];
+
+export type PostApiRegisterResponses = {
+    /**
+     * Successful response
+     */
+    201: UserOutSchema;
+};
+
+export type PostApiRegisterResponse = PostApiRegisterResponses[keyof PostApiRegisterResponses];
