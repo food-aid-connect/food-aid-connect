@@ -38,6 +38,7 @@ def test_postgresql_seed_reset_and_login(postgres_environment):
         assert '4 available batches, 1 reserved batch' in result.stdout
     result = run_python(env, '-c', '''
 from app import app, db, User, Batch
+from batch_details import BatchCreateSchema, BatchDetailsSchema
 from seed import DEMO_PASSWORD
 from werkzeug.security import check_password_hash
 from sqlalchemy import select, func
@@ -52,6 +53,16 @@ with app.app_context():
     assert Batch.query.filter_by(status="available").count() == 4
     reserved = Batch.query.filter_by(status="reserved").one()
     assert db.session.get(User, reserved.charity_id).role == "charity"
+    details_schema = BatchDetailsSchema()
+    create_schema = BatchCreateSchema()
+    for batch in Batch.query.all():
+        details = details_schema.dump(batch)
+        assert details.keys() == details_schema.fields.keys()
+        assert all(value is not None for value in details.values())
+        assert details["pickup_address"].strip()
+        create_schema.load(dict(
+            details, title=batch.title, quantity=batch.quantity, pickup_date=batch.pickup_date
+        ))
     for user in User.query.all():
         assert check_password_hash(user.password_hash, DEMO_PASSWORD)
         with app.test_client() as client:

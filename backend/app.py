@@ -7,7 +7,7 @@
 # session: remembers data about the user between pages (who is logged in)
 from flask import render_template, request, redirect, url_for, flash, session
 
-# Flask-SQLAlchemy: an ORM (Object-Relational Mapper) 
+# Flask-SQLAlchemy: an ORM (Object-Relational Mapper)
 # It lets us use the database with Python classes and objects instead of writing SQL queries
 from flask_sqlalchemy import SQLAlchemy
 
@@ -20,17 +20,35 @@ import os
 
 # APIFlask also builds the Swagger/OpenAPI documentation.
 from apiflask import APIFlask, Schema, abort
-from apiflask.fields import Float, Integer, String
-from apiflask.validators import OneOf
+from apiflask.fields import Float, Integer, String, Email
+from apiflask.validators import Length, OneOf
 from marshmallow import ValidationError
 from batch_details import BatchCreateSchema, BatchDetailsSchema, CATEGORIES
 
+# IntegrityError: raised by the database when a rule is broken (here, a duplicate email)
+from sqlalchemy.exc import IntegrityError
 
+# ---------------------------------------------------------------------------------------------------
+# SCHEMAS
 class ReservationSchema(Schema):
     message = String(required=True)
     batch_id = Integer(required=True)
     status = String(required=True)
     charity_id = Integer(required=True)
+
+class UserRegisterSchema(Schema):
+    email = Email(required=True)
+    password = String(required=True, validate=Length(min=6))
+    role = String(required=True, validate=OneOf(["donor", "charity"]))
+
+class UserLoginSchema(Schema):
+    email = Email(required=True)
+    password = String(required=True)
+
+class UserOutSchema(Schema):
+    id = Integer(required=True)
+    email = Email(required=True)
+    role = String(required=True)
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -193,6 +211,73 @@ def logout():
     flash("You are logged out.")
     return redirect(url_for("home"))
 
+
+@app.post("/api/register")
+@app.input(UserRegisterSchema, location="json")
+@app.output(UserOutSchema, status_code=201)
+@app.doc(summary="Register a new account", tags=["Users"], responses={409: "This email is already registered"})
+def api_register(json_data):
+    email = json_data["email"].strip()
+    if User.query.filter_by(email=email).first():
+        abort(409, message="This email is already registered")
+
+    # Create the User with the HASH of the password
+    user = User(email=email, password_hash=generate_password_hash(json_data["password"]), role=json_data["role"])
+
+    db.session.add(user)
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        abort(409, message="This email is already registered")
+
+    return user
+
+
+@app.post("/api/login")
+@app.input(UserLoginSchema, location="json")
+@app.output(UserOutSchema)
+@app.doc(summary="Log in", tags=["Users"], responses={401: "Invalid email or password."})
+def api_login(json_data):
+    email = json_data["email"].strip()
+    password = json_data["password"]
+
+    # Look for the user with this email (None if it does not exist)
+    user = User.query.filter_by(email=email).first()
+
+    # check_password_hash hashes the typed password and compares it with the hash saved in the database.
+    # If the user does not exist OR the password is wrong
+    if user is None or not check_password_hash(user.password_hash, password):
+        abort(401, message="Invalid email or password.")
+
+    # Remember the user in the session (user_id, email, role)
+    session["user_id"] = user.id
+    session["email"] = user.email
+    session["role"] = user.role
+
+    return user
+
+
+@app.post("/api/logout")
+@app.output({}, status_code=204)
+@app.doc(summary="Empty the session", tags=["Users"])
+def api_logout():
+    # empty the session, return an empty response
+    session.clear()
+    return ""
+
+
+@app.get("/api/me")
+@app.output(UserOutSchema)
+@app.doc(summary="Find the logged-in user", tags=["Users"], responses={401: "Login required"})
+def api_me():
+    # Find the logged-in user
+    user = db.session.get(User, session["user_id"]) if session.get("user_id") else None
+    if user is None:
+        abort(401, message="Please log in to see your account")
+    return user
+
+
 # Post a new surplus food batch
 # GET: display the form
 # POST: validate the form and save the batch
@@ -213,7 +298,7 @@ def new_batch(form_data):
     if session.get("role") != "donor":
         flash("Only donors can post a batch.")
         return redirect(url_for("home"))
-    
+
     if request.method == "POST":
         # Validate once; keep form errors as HTML with HTTP 400.
         schema = BatchCreateSchema()
@@ -297,6 +382,36 @@ class BatchQuerySchema(Schema):
     status = String(load_default="available", validate=OneOf(["available", "reserved"]))
 
 # API ROUTES
+@app.get("/api/me/batches")
+@app.output(BatchOutSchema(many=True))
+@app.doc(summary="List my donated batches", tags=["Batches"], responses={
+    401: "Login required", 403: "Only donors can list their donated batches"
+})
+def list_my_batches():
+    user = db.session.get(User, session["user_id"]) if session.get("user_id") else None
+    if user is None:
+        abort(401, message="Please log in to see your batches")
+    if user.role != "donor":
+        abort(403, message="Only donors can list their donated batches")
+
+    return Batch.query.filter_by(donor_id=user.id).order_by(Batch.id).all()
+
+
+@app.get("/api/me/reservations")
+@app.output(BatchOutSchema(many=True))
+@app.doc(summary="List my reserved batches", tags=["Batches"], responses={
+    401: "Login required", 403: "Only charities can list their reservations"
+})
+def list_my_reservations():
+    user = db.session.get(User, session["user_id"]) if session.get("user_id") else None
+    if user is None:
+        abort(401, message="Please log in to see your reservations")
+    if user.role != "charity":
+        abort(403, message="Only charities can list their reservations")
+
+    return Batch.query.filter_by(charity_id=user.id, status="reserved").order_by(Batch.id).all()
+
+
 @app.get("/api/batches")
 @app.input(BatchQuerySchema, location="query")
 @app.output(BatchOutSchema(many=True))
@@ -308,6 +423,93 @@ def list_batches(query_data):
     ).scalars().all()
     return batches
 
+@app.get("/api/batches/<int:batch_id>")
+@app.output(BatchOutSchema)
+@app.doc(summary="Get one batch", tags=["Batches"], responses={404: "Batch not found"})
+def get_batch(batch_id):
+    batch = db.session.get(Batch, batch_id)
+    if batch is None:
+        abort(404, message="Batch not found")
+    return batch
+
+@app.post("/api/batches")
+@app.input(BatchCreateSchema, location="json")
+@app.output(BatchOutSchema, status_code=201)
+@app.doc(summary="Post one batch", tags=["Batches"], responses={401: "Login required", 403: "Only donors can post batches"})
+def create_batch(json_data):
+    # Find the logged-in user
+    user = db.session.get(User, session["user_id"]) if session.get("user_id") else None
+    if user is None:
+        abort(401, message="Please log in to post a batch")
+    if user.role != "donor":
+        abort(403, message="Only donors can post batches")
+
+    # Convert pickup_date to a string
+    json_data["pickup_date"] = json_data["pickup_date"].isoformat()
+    # Create the Batch, add it, commit
+    batch = Batch(donor_id=user.id, **json_data)
+    db.session.add(batch)
+    db.session.commit()
+
+    # Return the batch
+    return batch
+
+@app.delete("/api/batches/<int:batch_id>")
+@app.output({}, status_code=204)
+@app.doc(summary="Delete a batch", tags=["Batches"], responses={401: "Login required", 403: "Only the donor who posted the batch can delete it", 404: "The batch must exist", 409: "The batch should be available, not reserved"})
+def delete_batch(batch_id):
+
+    # Find the logged-in user
+    user = db.session.get(User, session["user_id"]) if session.get("user_id") else None
+    if user is None:
+        abort(401, message="Please log in to delete a batch")
+
+    # Find the batch
+    # Lock the batch row until the end of the request, so a charity cannot
+    # reserve it between the status check and the delete
+    batch = db.session.get(Batch, batch_id, with_for_update=True)
+    if batch is None:
+        abort(404, message="Batch not found")
+    if batch.donor_id != user.id:
+        abort(403, message="Only the donor who posted the batch can delete it")
+    if batch.status != "available":
+        abort(409, message="The batch must be available")
+
+    db.session.delete(batch)
+    db.session.commit()
+
+    return ""
+
+@app.put("/api/batches/<int:batch_id>")
+@app.input(BatchCreateSchema, location="json")
+@app.output(BatchOutSchema, status_code=200)
+@app.doc(summary="Update a batch", tags=["Batches"], responses={401: "Login required", 403: "Only the donor who posted the batch can update it", 404: "The batch must exist", 409: "The batch should be available, not reserved"})
+def update_batch(batch_id, json_data):
+
+    # Find the logged-in user
+    user = db.session.get(User, session["user_id"]) if session.get("user_id") else None
+    if user is None:
+        abort(401, message="Please log in to update a batch")
+
+    # Find the batch
+    # Lock the batch row until the end of the request, so a charity cannot
+    # reserve it between the status check and the update
+    batch = db.session.get(Batch, batch_id, with_for_update=True)
+    if batch is None:
+        abort(404, message="Batch not found")
+    if batch.donor_id != user.id:
+        abort(403, message="Only the donor who posted the batch can update it")
+    if batch.status != "available":
+        abort(409, message="The batch must be available")
+
+    # Convert pickup_date to a string
+    json_data["pickup_date"] = json_data["pickup_date"].isoformat()
+
+    for key, value in json_data.items():
+        setattr(batch, key, value)
+    db.session.commit()
+
+    return batch
 
 # ---------------------------------------------------------------------------------------------------
 

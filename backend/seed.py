@@ -1,6 +1,7 @@
 """Reset an explicitly selected disposable local database with demo data."""
 import argparse
-from datetime import date, timedelta
+from datetime import date, time, timedelta
+from decimal import Decimal
 import os
 import re
 
@@ -51,17 +52,43 @@ def populate_demo_data(db, User, Batch):
     db.session.add_all(users)
     db.session.flush()
     tomorrow = date.today() + timedelta(days=1)
+    pickup_date = tomorrow.isoformat()
+    bakery_address = "18 Rue du Faubourg Saint-Antoine, 75012 Paris"
+    market_address = "24 Rue d'Aligre, 75012 Paris"
     examples = (
-        ("Fresh sourdough bread", "20 loaves", 0, "available", None),
-        ("Seasonal vegetables", "15 kg", 1, "available", None),
-        ("Apples and pears", "10 kg", 1, "available", None),
-        ("Wholegrain rolls", "40 rolls", 0, "available", None),
-        ("Rice and lentils", "12 sealed 1 kg bags", 1, "reserved", users[2].id),
+        Batch(
+            title="Fresh sourdough bread", quantity="20 loaves", pickup_date=pickup_date,
+            donor_id=users[0].id, category="Bread and bakery", quantity_kg=Decimal("10"),
+            use_by_date=tomorrow + timedelta(days=2), pickup_address=bakery_address,
+            pickup_start=time(8, 30), pickup_end=time(10),
+        ),
+        Batch(
+            title="Seasonal vegetables", quantity="15 kg", pickup_date=pickup_date,
+            donor_id=users[1].id, category="Fruit and vegetables", quantity_kg=Decimal("15"),
+            use_by_date=tomorrow + timedelta(days=3), pickup_address=market_address,
+            pickup_start=time(12), pickup_end=time(14),
+        ),
+        Batch(
+            title="Apples and pears", quantity="10 kg", pickup_date=pickup_date,
+            donor_id=users[1].id, category="Fruit and vegetables", quantity_kg=Decimal("10"),
+            use_by_date=tomorrow + timedelta(days=5), pickup_address=market_address,
+            pickup_start=time(12), pickup_end=time(14),
+        ),
+        Batch(
+            title="Wholegrain rolls", quantity="40 rolls", pickup_date=pickup_date,
+            donor_id=users[0].id, category="Bread and bakery", quantity_kg=Decimal("3.2"),
+            use_by_date=tomorrow + timedelta(days=1), pickup_address=bakery_address,
+            pickup_start=time(8, 30), pickup_end=time(10),
+        ),
+        Batch(
+            title="Rice and lentils", quantity="12 sealed 1 kg bags", pickup_date=pickup_date,
+            donor_id=users[1].id, charity_id=users[2].id, status="reserved",
+            category="Canned and dry goods", quantity_kg=Decimal("12"),
+            use_by_date=tomorrow + timedelta(days=180), pickup_address=market_address,
+            pickup_start=time(14), pickup_end=time(16),
+        ),
     )
-    for title, quantity, donor, status, charity_id in examples:
-        db.session.add(Batch(title=title, quantity=quantity,
-                             pickup_date=tomorrow.isoformat(), status=status,
-                             donor_id=users[donor].id, charity_id=charity_id))
+    db.session.add_all(examples)
     db.session.commit()
 
 
