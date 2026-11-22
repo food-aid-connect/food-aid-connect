@@ -10,6 +10,11 @@ const router = createRouter({
       component: HomeView,
     },
     {
+      path: '/batches',
+      name: 'available-batches',
+      component: () => import('../views/AvailableBatchesView.vue'),
+    },
+    {
       path: '/about',
       name: 'about',
       // route level code-splitting
