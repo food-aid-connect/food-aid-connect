@@ -172,3 +172,25 @@ tests, configure `FAC_SEED_TEST_DATABASE_URL` for another disposable local
 database named `foodaid_seed_test` (not `foodaid_demo` or `foodaid_test`). CI
 creates this separate database and runs those checks alongside the PostgreSQL
 reservation tests.
+
+## Postman collection
+
+A Postman collection of the API is available in `docs/postman/food-aid-connect.postman_collection.json`. It is used to test and demonstrate the routes.
+
+### How to use it
+
+1. Start the Flask API on `http://127.0.0.1:5000`.
+2. In Postman, click on **Import** and select the collection file.
+3. Open the **Variables** tab of the collection and set `testPassword` to a password of your choice (at least 6 characters).
+4. Run these two folders in this order with the Collection Runner: `1 - Functional path (donor and charity)`, then `2 - Error cases`.
+
+### What it covers
+
+- Folder 1 registers a donor and a charity, logs them in, creates a batch, lists the available batches and reserves one (the session cookie is kept by Postman between requests).
+- Folder 2 checks the main error cases (401, 403, 404, 409 and 422).
+- Each request has a test on its expected status code, so the Runner shows what passes or fails.
+
+### Notes
+
+- Reset the demo database before running the folders again (`python backend/seed.py --reset-demo`, see the Demo data section above). Otherwise, the registration returns 409 because the accounts already exist.
+- The `api` folder contains the raw requests imported from `/openapi.json`. It is not meant to be run in order.
