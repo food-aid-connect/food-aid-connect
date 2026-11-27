@@ -1,6 +1,29 @@
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
+import { ref } from 'vue'
+import { RouterLink, RouterView, useRouter } from 'vue-router'
+import { session } from '@/auth/session'
 import HelloWorld from './components/HelloWorld.vue'
+
+const { user, restoreFailed } = session
+const router = useRouter()
+const loggingOut = ref(false)
+const logoutFailed = ref(false)
+
+async function logout() {
+  if (loggingOut.value) return
+  loggingOut.value = true
+  logoutFailed.value = false
+
+  try {
+    if (await session.logout()) {
+      await router.replace({ name: 'login' })
+    } else {
+      logoutFailed.value = true
+    }
+  } finally {
+    loggingOut.value = false
+  }
+}
 </script>
 
 <template>
@@ -10,15 +33,33 @@ import HelloWorld from './components/HelloWorld.vue'
     <div class="wrapper">
       <HelloWorld msg="You did it!" />
 
-      <nav>
+      <nav aria-label="Main navigation">
         <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/batches">Available batches</RouterLink>
         <RouterLink to="/about">About</RouterLink>
+        <RouterLink v-if="user?.role === 'donor'" :to="{ name: 'my-batches' }">
+          My donated batches
+        </RouterLink>
+        <template v-if="user?.role === 'charity'">
+          <RouterLink :to="{ name: 'available-batches' }">Available batches</RouterLink>
+          <RouterLink :to="{ name: 'my-reservations' }">My reservations</RouterLink>
+        </template>
+        <button v-if="user" type="button" :disabled="loggingOut" @click="logout">
+          {{ loggingOut ? 'Logging out…' : 'Log out' }}
+        </button>
+        <template v-else>
+          <RouterLink :to="{ name: 'login' }">Log in</RouterLink>
+          <RouterLink :to="{ name: 'register' }">Register</RouterLink>
+        </template>
       </nav>
+      <p v-if="user">{{ user.email }} ({{ user.role }})</p>
+      <p v-if="restoreFailed" role="alert">Could not check your session. Refresh the page to try again.</p>
+      <p v-if="logoutFailed" role="alert">Could not log out. Please try again.</p>
     </div>
   </header>
 
-  <RouterView />
+  <RouterView v-slot="{ Component, route }">
+    <component :is="Component" :key="route.path" />
+  </RouterView>
 </template>
 
 <style scoped>
