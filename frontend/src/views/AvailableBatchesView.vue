@@ -1,6 +1,28 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { getApiBatches, type GetApiBatchesResponse } from '@/api/generated'
+import { computed, onMounted, ref } from 'vue'
+import { getApiBatches, getApiMeBatches, getApiMeReservations, type GetApiBatchesResponse } from '@/api/generated'
+
+const props = withDefaults(defineProps<{ list?: 'available' | 'donations' | 'reservations' }>(), {
+  list: 'available',
+})
+const lists = {
+  available: {
+    title: 'Available batches',
+    empty: 'No batches are available right now.',
+    load: () => getApiBatches({ query: { status: 'available' }, throwOnError: true }),
+  },
+  donations: {
+    title: 'My donated batches',
+    empty: 'You have no donated batches.',
+    load: () => getApiMeBatches({ throwOnError: true }),
+  },
+  reservations: {
+    title: 'My reservations',
+    empty: 'You have no reservations.',
+    load: () => getApiMeReservations({ throwOnError: true }),
+  },
+}
+const list = computed(() => lists[props.list])
 
 const batches = ref<GetApiBatchesResponse>([])
 const loading = ref(true)
@@ -11,10 +33,7 @@ async function loadBatches() {
   loadFailed.value = false
 
   try {
-    const { data } = await getApiBatches({
-      query: { status: 'available' },
-      throwOnError: true,
-    })
+    const { data } = await list.value.load()
     batches.value = data
   } catch {
     loadFailed.value = true
@@ -28,14 +47,14 @@ onMounted(loadBatches)
 
 <template>
   <main class="available-batches">
-    <h1>Available batches</h1>
+    <h1>{{ list.title }}</h1>
 
-    <p v-if="loading" role="status">Loading available batches…</p>
+    <p v-if="loading" role="status">Loading {{ list.title.toLowerCase() }}…</p>
     <div v-else-if="loadFailed">
-      <p role="alert">Could not load available batches.</p>
+      <p role="alert">Could not load {{ list.title.toLowerCase() }}.</p>
       <button type="button" @click="loadBatches">Try again</button>
     </div>
-    <p v-else-if="batches.length === 0" role="status">No batches are available right now.</p>
+    <p v-else-if="batches.length === 0" role="status">{{ list.empty }}</p>
     <ul v-else class="batch-list">
       <li v-for="(batch, index) in batches" :key="batch.id ?? `row-${index}`" class="batch">
         <h2>{{ batch.title || 'Untitled batch' }}</h2>
