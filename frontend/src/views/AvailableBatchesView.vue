@@ -41,9 +41,9 @@ onMounted(loadBatches)
         <h2>{{ batch.title || 'Untitled batch' }}</h2>
         <p v-if="batch.category">{{ batch.category }}</p>
         <dl>
-          <div v-if="batch.quantity || batch.quantity_kg != null">
+          <div v-if="batch.quantity_kg != null">
             <dt>Quantity</dt>
-            <dd>{{ batch.quantity || `${batch.quantity_kg} kg` }}</dd>
+            <dd>{{ `${batch.quantity_kg} kg` }}</dd>
           </div>
           <div v-if="batch.pickup_date || batch.pickup_address || (batch.pickup_start && batch.pickup_end)">
             <dt>Pickup</dt>

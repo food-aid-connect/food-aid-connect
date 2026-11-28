@@ -46,8 +46,8 @@ an available batch for one charity.
 
 ## Full batch descriptions (FAC-67)
 
-`POST /batches/new` accepts form-encoded data. `title`, `quantity`,
-`pickup_date`, `quantity_kg`, and `use_by_date` are required. The weight must
+`POST /batches/new` accepts form-encoded data. `title`, `pickup_date`,
+`quantity_kg`, and `use_by_date` are required. The weight must
 be between 0.001 and 9999999.999 kg. Use-by must be today or later; pickup
 must be a real date no later than use-by. Invalid submissions return HTTP 400
 with HTML error messages. Dates use the application server's local calendar.
@@ -193,4 +193,3 @@ A Postman collection of the API is available in `docs/postman/food-aid-connect.p
 ### Notes
 
 - Reset the demo database before running the folders again (`python backend/seed.py --reset-demo`, see the Demo data section above). Otherwise, the registration returns 409 because the accounts already exist.
-- The `api` folder contains the raw requests imported from `/openapi.json`. It is not meant to be run in order.

@@ -61,7 +61,7 @@ with app.app_context():
         assert all(value is not None for value in details.values())
         assert details["pickup_address"].strip()
         create_schema.load(dict(
-            details, title=batch.title, quantity=batch.quantity, pickup_date=batch.pickup_date
+            details, title=batch.title, pickup_date=batch.pickup_date
         ))
     for user in User.query.all():
         assert check_password_hash(user.password_hash, DEMO_PASSWORD)

@@ -11,11 +11,11 @@ def batch_ids(records):
         db.session.flush()
 
         mine_reserved = Batch(
-            title="Apples", quantity="2 crates", pickup_date="2026-11-11",
+            title="Apples", pickup_date="2026-11-11",
             donor_id=records["donor"], charity_id=records["other"], status="reserved",
         )
         other_reserved = Batch(
-            title="Potatoes", quantity="1 crate", pickup_date="2026-11-11",
+            title="Potatoes", pickup_date="2026-11-11",
             donor_id=other_donor.id, charity_id=records["charity"], status="reserved",
         )
         db.session.add_all([mine_reserved, other_reserved])

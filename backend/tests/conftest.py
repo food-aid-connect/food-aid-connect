@@ -5,6 +5,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from uuid import uuid4
 
+from decimal import Decimal
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.engine import make_url
@@ -72,7 +74,7 @@ def records():
         other = User(email="other@example.org", password_hash="unused", role="charity")
         db.session.add_all([donor, charity, other])
         db.session.flush()
-        batch = Batch(title="Fresh bread", quantity="10 loaves", pickup_date="2026-11-11",
+        batch = Batch(title="Fresh bread", quantity_kg=Decimal("10"), pickup_date="2026-11-11",
                       donor_id=donor.id)
         db.session.add(batch)
         db.session.commit()

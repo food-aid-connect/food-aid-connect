@@ -57,31 +57,31 @@ def populate_demo_data(db, User, Batch):
     market_address = "24 Rue d'Aligre, 75012 Paris"
     examples = (
         Batch(
-            title="Fresh sourdough bread", quantity="20 loaves", pickup_date=pickup_date,
+            title="Fresh sourdough bread", pickup_date=pickup_date,
             donor_id=users[0].id, category="Bread and bakery", quantity_kg=Decimal("10"),
             use_by_date=tomorrow + timedelta(days=2), pickup_address=bakery_address,
             pickup_start=time(8, 30), pickup_end=time(10),
         ),
         Batch(
-            title="Seasonal vegetables", quantity="15 kg", pickup_date=pickup_date,
+            title="Seasonal vegetables", pickup_date=pickup_date,
             donor_id=users[1].id, category="Fruit and vegetables", quantity_kg=Decimal("15"),
             use_by_date=tomorrow + timedelta(days=3), pickup_address=market_address,
             pickup_start=time(12), pickup_end=time(14),
         ),
         Batch(
-            title="Apples and pears", quantity="10 kg", pickup_date=pickup_date,
+            title="Apples and pears", pickup_date=pickup_date,
             donor_id=users[1].id, category="Fruit and vegetables", quantity_kg=Decimal("10"),
             use_by_date=tomorrow + timedelta(days=5), pickup_address=market_address,
             pickup_start=time(12), pickup_end=time(14),
         ),
         Batch(
-            title="Wholegrain rolls", quantity="40 rolls", pickup_date=pickup_date,
+            title="Wholegrain rolls", pickup_date=pickup_date,
             donor_id=users[0].id, category="Bread and bakery", quantity_kg=Decimal("3.2"),
             use_by_date=tomorrow + timedelta(days=1), pickup_address=bakery_address,
             pickup_start=time(8, 30), pickup_end=time(10),
         ),
         Batch(
-            title="Rice and lentils", quantity="12 sealed 1 kg bags", pickup_date=pickup_date,
+            title="Rice and lentils", pickup_date=pickup_date,
             donor_id=users[1].id, charity_id=users[2].id, status="reserved",
             category="Canned and dry goods", quantity_kg=Decimal("12"),
             use_by_date=tomorrow + timedelta(days=180), pickup_address=market_address,

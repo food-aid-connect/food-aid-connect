@@ -10,7 +10,6 @@ export type BatchCreateSchema = {
     pickup_date: string;
     pickup_end?: string | null;
     pickup_start?: string | null;
-    quantity: string;
     quantity_kg: number;
     title: string;
     use_by_date: string;
@@ -25,7 +24,6 @@ export type BatchOutSchema = {
     pickup_date?: string;
     pickup_end?: string | null;
     pickup_start?: string | null;
-    quantity?: string;
     quantity_kg?: number | null;
     status?: string;
     title?: string;

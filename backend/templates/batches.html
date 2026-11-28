@@ -11,7 +11,7 @@
     {% for batch in batches %}
         <article>
             <h2>{{ batch.title }}</h2>
-            <p>Quantity: {{ batch.quantity }}</p>
+            <p>Quantity: {{ batch.quantity_kg }} kg</p>
             <p>Pickup date: {{ batch.pickup_date }}</p>
             {% if can_reserve %}
                 <form class="reserve-form" action="{{ url_for('reserve_batch', batch_id=batch.id) }}" method="post">

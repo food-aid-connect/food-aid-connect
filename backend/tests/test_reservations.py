@@ -90,7 +90,7 @@ def test_reserve_button_visibility(client, records, sign_in, role):
     response = client.get('/batches')
     assert response.status_code == 200
     assert b'Fresh bread' in response.data
-    assert b'10 loaves' in response.data
+    assert b'Quantity: 10' in response.data
     assert (b'>Reserve</button>' in response.data) == (role == "charity")
 
 
@@ -132,7 +132,7 @@ def test_existing_account_and_batch_flow(client):
         donor_id = session['user_id']
         assert session['role'] == 'donor'
     response = client.post('/batches/new', data={
-        'title': 'Vegetables', 'quantity': '5 kg', 'pickup_date': date.today().isoformat(),
+        'title': 'Vegetables', 'pickup_date': date.today().isoformat(),
         'quantity_kg': '5', 'use_by_date': date.today().isoformat()
     })
     assert response.status_code == 302
@@ -150,7 +150,7 @@ def test_existing_account_and_batch_flow(client):
 def test_charity_still_cannot_create_batches(client, records, sign_in):
     sign_in(client, records['charity'])
     response = client.post('/batches/new', data={
-        'title': 'Forbidden', 'quantity': '5 kg', 'pickup_date': '2026-11-11'
+        'title': 'Forbidden', 'pickup_date': '2026-11-11'
     })
     assert response.status_code == 302
     with app.app_context():

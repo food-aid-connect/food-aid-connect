@@ -30,7 +30,7 @@ def assert_demo_data(db):
     assert db.session.get(User, reserved.charity_id).role == "charity"
     assert all(db.session.get(User, batch.donor_id).role == "donor" for batch in Batch.query.all())
     assert all(batch.charity_id is None for batch in Batch.query.filter_by(status="available"))
-    assert all(batch.title and batch.quantity and batch.pickup_date for batch in Batch.query.all())
+    assert all(batch.title and batch.quantity_kg and batch.pickup_date for batch in Batch.query.all())
     hashes = []
     for user in User.query.all():
         assert user.password_hash != DEMO_PASSWORD

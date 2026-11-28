@@ -44,7 +44,6 @@ def valid_batch_json():
     # (Rule : use date limited to the present day)
     return {
         "title": "Test bread",
-        "quantity": "5 loaves",
         "pickup_date": date.today().isoformat(),
         "quantity_kg": 2.5,
         "use_by_date": (date.today() + timedelta(days=1)).isoformat(),
