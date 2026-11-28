@@ -90,7 +90,6 @@ class Batch(db.Model):
 
     # Information entered by the donor
     title = db.Column(db.String(120), nullable=False)
-    quantity = db.Column(db.String(100), nullable=False)
     pickup_date = db.Column(db.String(20), nullable=False)
 
     # Nullable details preserve legacy batches and demo seed records.
@@ -332,7 +331,6 @@ class BatchOutSchema(BatchDetailsSchema):
     quantity_kg = Float(allow_none=True)
     id = Integer()
     title = String()
-    quantity = String()
     pickup_date = String()
     status = String()
     donor_id = Integer()

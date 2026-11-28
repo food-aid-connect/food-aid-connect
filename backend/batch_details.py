@@ -48,7 +48,6 @@ class BatchCreateSchema(BatchDetailsSchema):
                                          max=DecimalValue('9999999.999')))
     use_by_date = Date(required=True)
     title = String(required=True, validate=Length(min=1, max=120))
-    quantity = String(required=True, validate=Length(min=1, max=100))
     pickup_date = Date(required=True)
 
     @validates_schema

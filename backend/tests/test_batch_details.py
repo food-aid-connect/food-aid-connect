@@ -26,8 +26,7 @@ def donor(client, sign_in):
 
 
 def form_data(**overrides):
-    data = {'title': 'Seasonal apples', 'quantity': '3 crates',
-            'pickup_date': date.today().isoformat(), 'category': 'Fruit and vegetables',
+    data = {'title': 'Seasonal apples', 'pickup_date': date.today().isoformat(), 'category': 'Fruit and vegetables',
             'quantity_kg': '12.500', 'use_by_date': (date.today() + timedelta(days=2)).isoformat(),
             'pickup_address': '12 Rue de Rivoli, Paris', 'pickup_start': '09:00', 'pickup_end': '11:30'}
     data.update(overrides)
@@ -78,7 +77,7 @@ def test_invalid_details_rejected(client, donor, changes):
 
 
 def test_legacy_records_and_filtering(client, donor):
-    legacy = {'title': 'Bread', 'quantity': '10 loaves', 'pickup_date': '2026-11-12'}
+    legacy = {'title': 'Bread', 'pickup_date': '2026-11-12'}
     batch = Batch(**legacy, donor_id=donor)
     db.session.add(batch)
     db.session.commit()
@@ -101,7 +100,7 @@ def test_documentation_and_form(client, donor):
     output = schemas[output_ref.rsplit('/', 1)[-1]]['properties']
     input_schema = schemas[input_ref.rsplit('/', 1)[-1]]
     input_fields = input_schema['properties']
-    assert {'title', 'quantity', 'pickup_date', 'quantity_kg', 'use_by_date'} <= set(input_schema['required'])
+    assert {'title', 'pickup_date', 'quantity_kg', 'use_by_date'} <= set(input_schema['required'])
     assert input_fields['pickup_date']['format'] == 'date'
     assert input_fields['category']['enum'] == [*CATEGORIES, None]
     assert Batch.quantity_kg.nullable and Batch.use_by_date.nullable
@@ -134,7 +133,7 @@ def test_registration_login_and_batch_authorization(client):
     assert Batch.query.count() == 1
 
 
-@pytest.mark.parametrize('field', ['title', 'quantity', 'pickup_date', 'quantity_kg', 'use_by_date'])
+@pytest.mark.parametrize('field', ['title', 'pickup_date', 'quantity_kg', 'use_by_date'])
 @pytest.mark.parametrize('value', [None, '', '   '])
 def test_required_fields(client, donor, field, value):
     data = form_data()
